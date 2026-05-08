@@ -1,113 +1,84 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCineVault } from "./CineVaultProvider";
-import { MOOD_CHIPS, pickFromMood, tagsForQuery } from "@/lib/cinevault/mood";
-import { MOVIES } from "@/lib/cinevault/movies";
-import { reel } from "@/lib/cinevault/reel";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Popcorn } from "lucide-react";
 
-export function MoodBar() {
-  const { archetype, archetypeData, watchlist } = useCineVault();
+export const MOOD_CHIPS = [
+  "Comfort", "Escape", "Funny", "Easy", "Quiet", "Intense", "Emotional", "Beautiful", "Smart", "Chaotic"
+];
+
+interface MoodBarProps {
+  onMoodSelect: (mood: string) => void;
+}
+
+export function MoodBar({ onMoodSelect }: MoodBarProps) {
   const [query, setQuery] = useState("");
-  const [pickId, setPickId] = useState<string | null>(null);
-  const [reelLine, setReelLine] = useState<string | null>(null);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  if (!archetype || !archetypeData) return null;
-
-  const unwatched = watchlist
-    .filter((w) => !w.watched)
-    .map((w) => MOVIES.find((m) => m.id === w.movieId))
-    .filter((m): m is NonNullable<typeof m> => !!m);
-
-  const handlePick = (tags: string[]) => {
-    if (unwatched.length === 0) {
-      setReelLine(reel.emptyWatchlist(archetype));
-      setPickId(null);
-      return;
-    }
-    const movie = pickFromMood(unwatched, tags as never);
-    if (!movie) return;
-    setPickId(movie.id);
-    setReelLine(reel.moodPick(archetype, movie));
+  const handlePick = (mood: string) => {
+    setSelectedMood(mood);
+    setQuery("");
+    onMoodSelect(mood);
   };
 
-  const pick = pickId ? MOVIES.find((m) => m.id === pickId) : null;
+  const companionText = selectedMood 
+    ? "Setting the mood for..." 
+    : "What's the evening calling for?";
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5" />
-        Reel
-      </div>
-      <h2 className="mt-1 font-display text-2xl leading-snug tracking-tight text-balance">
-        {archetypeData.moodPrompt}
-      </h2>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {MOOD_CHIPS.map((c) => (
-          <button
-            key={c.label}
-            onClick={() => handlePick(c.tags)}
-            className="rounded-full border border-border bg-background px-3.5 py-1.5 text-sm hover:bg-secondary hover:border-primary/50 transition-colors"
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handlePick(tagsForQuery(query));
-        }}
-        className="mt-3 flex items-center gap-2 rounded-full border border-border bg-background pl-4 pr-1 py-1 focus-within:border-primary/60"
-      >
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="…or just type how you feel"
-          className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-primary p-2 text-primary-foreground hover:scale-105 transition-transform"
-          aria-label="Ask Reel"
-        >
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </form>
-
-      <AnimatePresence mode="wait">
-        {reelLine && (
-          <motion.div
-            key={reelLine + (pick?.id ?? "")}
-            initial={{ opacity: 0, y: 6 }}
+    <section className="relative z-10 w-full mb-12">
+      <div className="flex flex-col items-center max-w-2xl mx-auto space-y-6">
+        {/* Companion Text */}
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={companionText}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-5 rounded-2xl bg-reel/95 p-4 text-reel-foreground"
+            exit={{ opacity: 0, y: -10 }}
+            className="text-lg md:text-xl font-display text-white/90 drop-shadow-md text-center"
           >
-            {pick && (
-              <div className="flex gap-3">
-                <img
-                  src={pick.poster}
-                  alt=""
-                  className="h-20 w-14 flex-none rounded-md object-cover"
-                />
-                <div className="flex-1">
-                  <div className="text-[10px] uppercase tracking-[0.2em] opacity-70">Reel says</div>
-                  <p className="mt-0.5 font-display text-lg leading-snug">{reelLine}</p>
-                  <div className="mt-1 text-xs opacity-80">
-                    {pick.title} · {pick.year}
-                  </div>
-                </div>
-              </div>
-            )}
-            {!pick && (
-              <p className="font-display text-base leading-snug">{reelLine}</p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {companionText} <span className="font-semibold text-primary">{selectedMood}</span>
+          </motion.p>
+        </AnimatePresence>
+
+        {/* Input Field */}
+        <div className="relative w-full max-w-md">
+          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 focus-within:opacity-100 transition-opacity duration-500" />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (query.trim()) handlePick(query.trim());
+            }}
+            className="relative flex items-center bg-black/60 backdrop-blur-md border border-white/20 rounded-full px-5 py-3.5 focus-within:border-primary/50 transition-colors shadow-2xl"
+          >
+            <Popcorn className="w-5 h-5 text-primary/80 mr-3" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Describe your mood..."
+              className="flex-1 bg-transparent text-white outline-none placeholder:text-white/40 font-medium"
+            />
+          </form>
+        </div>
+
+        {/* Scrollable Chips */}
+        <div className="w-full overflow-x-auto pb-4 hide-scrollbar">
+          <div className="flex items-center justify-center gap-3 min-w-max px-4">
+            {MOOD_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handlePick(chip)}
+                className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 border ${
+                  selectedMood === chip
+                    ? "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-105"
+                    : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10 hover:border-white/30"
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

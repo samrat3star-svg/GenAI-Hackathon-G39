@@ -23,7 +23,9 @@ interface CineVaultContextValue {
   archetype: ArchetypeId | null;
   archetypeData: Archetype | null;
   watchlist: WatchlistItem[];
+  detailMovieId: string | null;
   setArchetype: (id: ArchetypeId | null) => void;
+  setDetailMovieId: (id: string | null) => void;
   addMovie: (movieId: string) => void;
   removeMovie: (movieId: string) => void;
   markWatched: (movieId: string, verdict: VerdictId) => void;
@@ -105,11 +107,14 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const [detailMovieId, setDetailMovieId] = useState<string | null>(null);
+
   const value = useMemo<CineVaultContextValue>(
     () => ({
       archetype,
       archetypeData: archetype ? ARCHETYPES[archetype] : null,
       watchlist,
+      detailMovieId,
       setArchetype,
       addMovie,
       removeMovie,
@@ -117,8 +122,9 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
       hasMovie,
       reset,
       seedDemo,
+      setDetailMovieId,
     }),
-    [archetype, watchlist, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo],
+    [archetype, watchlist, detailMovieId, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
