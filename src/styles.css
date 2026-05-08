@@ -131,6 +131,29 @@
   --reel-foreground: oklch(0.14 0.012 60);
 }
 
+[data-surface="cinema"] {
+  --background: oklch(0.13 0.008 260);
+  --foreground: oklch(0.97 0.005 250);
+  --card: oklch(0.17 0.01 260);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.17 0.01 260);
+  --popover-foreground: oklch(0.97 0.005 250);
+  --primary: oklch(0.78 0.16 55);
+  --primary-foreground: oklch(0.15 0.02 50);
+  --secondary: oklch(0.22 0.012 260);
+  --secondary-foreground: oklch(0.97 0.005 250);
+  --muted: oklch(0.22 0.012 260);
+  --muted-foreground: oklch(0.7 0.012 250);
+  --accent: oklch(0.72 0.18 35);
+  --accent-foreground: oklch(0.15 0.02 50);
+  --border: oklch(0.3 0.012 260);
+  --input: oklch(0.3 0.012 260);
+  --ring: oklch(0.78 0.16 55);
+  --reel: oklch(0.78 0.16 55);
+  --reel-foreground: oklch(0.15 0.02 50);
+  font-family: var(--font-body);
+}
+
 [data-archetype="architect"] {
   --background: oklch(0.2 0.015 250);
   --foreground: oklch(0.96 0.01 250);
