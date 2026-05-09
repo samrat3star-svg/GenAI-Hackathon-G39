@@ -81,14 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
   }),
   beforeLoad: ({ location }) => {
-    /*
     if (typeof window === "undefined") return;
     const authed = localStorage.getItem("cv_authed");
     const isAuthPage = location.pathname === "/" || location.pathname === "/auth";
     if ((!authed || authed !== "true") && !isAuthPage) {
       throw redirect({ to: "/" });
     }
-    */
   },
   shellComponent: RootShell,
   component: RootComponent,
@@ -97,17 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }
 
 if (typeof window !== "undefined") {

@@ -4,8 +4,6 @@ import { MOVIES } from "@/lib/cinevault/movies";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    // Temporarily disabled to debug Invariant fail
-    /*
     if (typeof window === "undefined") return;
     const authed = localStorage.getItem("cv_authed");
     const archetype = localStorage.getItem("cv_archetype");
@@ -14,7 +12,6 @@ export const Route = createFileRoute("/")({
     if (authed === "true") {
       throw redirect({ to: archetype ? "/watchlist" : "/onboarding" });
     }
-    */
   },
   component: LandingAuthPage,
 });
