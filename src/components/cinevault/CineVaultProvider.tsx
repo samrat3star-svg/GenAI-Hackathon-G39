@@ -67,7 +67,7 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     if (archetype) root.setAttribute("data-archetype", archetype);
-    else root.setAttribute("data-archetype", "empath");
+    else root.setAttribute("data-archetype", "pulse-chaser");
   }, [archetype]);
 
   const setArchetype = useCallback((id: ArchetypeId | null) => {

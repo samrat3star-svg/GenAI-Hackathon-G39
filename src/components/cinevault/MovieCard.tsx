@@ -51,6 +51,11 @@ export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatche
             <span className="text-muted-foreground font-body text-sm font-normal">
               · {movie.year}
             </span>
+            {movie.rating ? (
+              <span className="ml-2 inline-flex items-center gap-0.5 text-amber-500 text-xs font-bold font-body align-middle">
+                ★ {movie.rating.toFixed(1)}
+              </span>
+            ) : null}
           </h3>
           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
             <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>

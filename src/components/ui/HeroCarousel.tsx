@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Plus, Clock, Calendar, Film } from "lucide-react";
+import { Play, Plus, Clock, Calendar, Film, Star } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 // Mock Data for Hero Carousel
@@ -15,6 +15,7 @@ const HERO_MOVIES = [
     poster: "https://image.tmdb.org/t/p/original/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
     tagline: "Dark room. Good speakers.",
     popchat: "Visually stunning but requires your full attention. Clear your evening.",
+    rating: 8.1,
   },
   {
     id: "dune",
@@ -25,6 +26,7 @@ const HERO_MOVIES = [
     poster: "https://image.tmdb.org/t/p/original/jYEW5xZkZk2WTrdbMGAPFuBqbDc.jpg",
     tagline: "Pure momentum from start to finish.",
     popchat: "An absolute scale monster. You'll feel the sand.",
+    rating: 8.0,
   },
   {
     id: "interstellar",
@@ -35,6 +37,7 @@ const HERO_MOVIES = [
     poster: "https://image.tmdb.org/t/p/original/xJHokMbljvjEVAZS3xZZIsq8PEw.jpg",
     tagline: "This one stays with people.",
     popchat: "Have tissues ready. The score alone is a religious experience.",
+    rating: 8.7,
   },
   {
     id: "spiderverse",
@@ -45,6 +48,7 @@ const HERO_MOVIES = [
     poster: "https://image.tmdb.org/t/p/original/7MgziEGA17HIf4pWezP1K5cE4H2.jpg",
     tagline: "A masterclass in style.",
     popchat: "Every frame is a painting. Perfect for when you need energy.",
+    rating: 8.4,
   },
   {
     id: "whiplash",
@@ -55,6 +59,7 @@ const HERO_MOVIES = [
     poster: "https://image.tmdb.org/t/p/original/6bbZ6XyvgfjhQwbplnUh1lsj1ky.jpg",
     tagline: "Best watched after midnight.",
     popchat: "Stressful in the best way possible. Don't blink.",
+    rating: 8.5,
   }
 ];
 
@@ -128,6 +133,8 @@ export function HeroCarousel() {
 
                       <div className="flex flex-wrap items-center gap-4 text-sm md:text-base text-white/80 font-medium">
                         <div className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {movie.year}</div>
+                        <div className="w-1 h-1 rounded-full bg-white/50" />
+                        <div className="flex items-center gap-1.5 text-amber-400"><Star className="w-4 h-4 fill-current" /> {movie.rating}</div>
                         <div className="w-1 h-1 rounded-full bg-white/50" />
                         <div className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {movie.runtime}m</div>
                         <div className="w-1 h-1 rounded-full bg-white/50" />

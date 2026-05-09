@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PopChat } from "../ui/PopChat";
 import { MovieDetailPanel } from "./MovieDetailPanel";
+import { Logo } from "./Logo";
 
 const DEMO_SEED = [
   "inception",
@@ -46,15 +47,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav className="fixed top-0 left-0 right-0 z-40 hidden md:flex items-center justify-between px-8 py-4 mx-auto w-full max-w-screen-2xl">
         <div className="absolute inset-0 bg-background/50 backdrop-blur-xl border-b border-border shadow-sm rounded-b-3xl"></div>
 
-        <div className="relative flex items-center gap-2">
-          <span className="font-display text-2xl font-bold tracking-tight text-foreground">CineVault</span>
+        <div className="relative flex items-center">
+          <Logo size={44} className="text-primary -ml-2 -mt-1" />
+          <span className="font-display text-2xl font-bold tracking-tight text-foreground -ml-1">CineVault</span>
         </div>
 
         {/* Desktop nav: Vault first, then Collections, then Search */}
         <div className="relative flex items-center gap-8 bg-card/80 px-8 py-3 rounded-full border border-border backdrop-blur-lg shadow-md">
+          <NavLink to="/search" label="Search" active={location.pathname === "/search"} />
           <NavLink to="/watchlist" label="Vault" active={location.pathname === "/watchlist"} primary />
           <NavLink to="/collections" label="Collections" active={location.pathname === "/collections"} />
-          <NavLink to="/search" label="Search" active={location.pathname === "/search"} />
         </div>
 
         <div className="relative flex items-center gap-4">

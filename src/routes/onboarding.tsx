@@ -4,6 +4,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DNA_QUESTIONS, scoreDna } from "@/lib/cinevault/dna";
 import { ARCHETYPES, type ArchetypeId } from "@/lib/cinevault/archetypes";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
+import { Logo } from "@/components/cinevault/Logo";
+
+const IMAGE_MAP: Record<string, string> = {
+  "Sparkles": "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=800&auto=format&fit=crop", // Alive
+  "AlertCircle": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop", // Cheated
+  "Moon": "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=800&auto=format&fit=crop", // Alone
+  "Users": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop", // Together
+  "Hourglass": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=800&auto=format&fit=crop", // Commitment
+  "Zap": "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop", // Wall
+  "Ghost": "https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=800&auto=format&fit=crop", // Disturbed
+  "Heart": "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?q=80&w=800&auto=format&fit=crop", // Comforted
+  "Eye": "https://images.unsplash.com/photo-1514306191717-452ec28c7814?q=80&w=800&auto=format&fit=crop", // Show me
+  "MessageSquare": "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=800&auto=format&fit=crop", // Tell me
+  "Compass": "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop", // Escape
+  "Lightbulb": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop", // Understand
+  "Trophy": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800&auto=format&fit=crop", // Masterpiece
+  "ShieldAlert": "https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?q=80&w=800&auto=format&fit=crop", // Ambush
+};
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: () => {
@@ -68,7 +86,7 @@ function Onboarding() {
             exit={{ opacity: 0 }}
             className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-6"
           >
-            <p className="text-xs uppercase tracking-[0.2em] text-primary">Reel</p>
+            <Logo size={80} className="mb-6 text-primary" />
             <p className="mt-3 font-display text-3xl sm:text-4xl leading-tight tracking-tight text-balance">
               Hey. Before we start — let me figure out what kind of movie person you are.
             </p>
@@ -102,17 +120,32 @@ function Onboarding() {
               {DNA_QUESTIONS[qIndex].options.map((opt, i) => (
                 <motion.button
                   key={opt.label}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.02, translateY: -4 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => choose(i)}
-                  className="group relative aspect-[3/2] sm:aspect-square rounded-3xl border-2 border-border bg-card p-6 text-left transition-colors hover:border-primary hover:bg-secondary"
+                  className="group relative aspect-[4/3] sm:aspect-square rounded-3xl border-2 border-border bg-card p-0 text-left transition-all duration-500 hover:border-primary overflow-hidden shadow-xl"
                 >
-                  <span className="absolute top-4 right-5 text-xs uppercase tracking-[0.2em] text-muted-foreground group-hover:text-primary">
-                    {i === 0 ? "A" : "B"}
-                  </span>
-                  <span className="absolute bottom-6 left-6 right-6 font-display text-2xl sm:text-3xl leading-tight tracking-tight">
-                    {opt.label}
-                  </span>
+                  {/* Thematic Colorful Image Background */}
+                  <div className="absolute inset-0 z-0">
+                    <img 
+                      src={opt.icon ? IMAGE_MAP[opt.icon] : ""} 
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" 
+                      alt=""
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
+                  </div>
+
+                  <div className="relative z-20 flex flex-col h-full justify-between p-6">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs uppercase tracking-[0.2em] text-white/70 group-hover:text-white transition-colors">
+                        {i === 0 ? "Option A" : "Option B"}
+                      </span>
+                    </div>
+                    
+                    <span className="font-display text-2xl sm:text-3xl leading-tight tracking-tight text-white drop-shadow-md">
+                      {opt.label}
+                    </span>
+                  </div>
                 </motion.button>
               ))}
             </div>

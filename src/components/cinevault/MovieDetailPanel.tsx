@@ -4,21 +4,58 @@ import { MOVIES } from "@/lib/cinevault/movies";
 import { Play, Plus, Clock, Calendar, Check, MessageCircle, Star } from "lucide-react";
 import { reelToast } from "@/components/cinevault/reelToast";
 import { reel } from "@/lib/cinevault/reel";
+import { useState, useEffect } from "react";
+import { getTMDBDetails } from "@/lib/tmdb";
+import { Movie } from "@/lib/cinevault/movies";
 
 export function MovieDetailPanel() {
   const { archetype, detailMovieId, setDetailMovieId, hasMovie, addMovie } = useCineVault();
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const movie = detailMovieId ? MOVIES.find((m) => m.id === detailMovieId) : null;
+  useEffect(() => {
+    if (!detailMovieId) {
+      setMovie(null);
+      return;
+    }
 
-  if (!movie || !archetype) return null;
+    const localMovie = MOVIES.find((m) => m.id === detailMovieId);
+    if (localMovie) {
+      setMovie(localMovie);
+      return;
+    }
+
+    // If not local, fetch from TMDB
+    const fetchTMDB = async () => {
+      setIsLoading(true);
+      const m = await getTMDBDetails(detailMovieId);
+      setMovie(m);
+      setIsLoading(false);
+    };
+
+    fetchTMDB();
+  }, [detailMovieId]);
+
+  if (!archetype) return null;
+  if (!detailMovieId) return null;
 
   const inWatchlist = hasMovie(movie.id);
 
   return (
     <Sheet open={!!detailMovieId} onOpenChange={(open) => !open && setDetailMovieId(null)}>
       <SheetContent side="right" className="w-full md:min-w-[500px] lg:min-w-[600px] p-0 bg-black border-l border-white/10 overflow-y-auto">
-        <SheetTitle className="sr-only">{movie.title} Details</SheetTitle>
+        <SheetTitle className="sr-only">{movie?.title || "Movie"} Details</SheetTitle>
         
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : !movie ? (
+          <div className="flex h-full items-center justify-center text-white/50">
+            Movie not found.
+          </div>
+        ) : (
+          <>
         {/* Cinematic Backdrop */}
         <div className="relative w-full aspect-[16/9]">
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10" />
@@ -37,9 +74,24 @@ export function MovieDetailPanel() {
               <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-white/60 font-medium">
                 <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {movie.year}</span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
+                {movie.rating ? (
+                  <>
+                    <span className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Star className="w-3.5 h-3.5 fill-current" /> {movie.rating.toFixed(1)}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-white/20" />
+                  </>
+                ) : null}
                 <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {movie.runtime}m</span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
                 <span>{movie.genres.join(", ")}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {movie.moodTags?.map(tag => (
+                  <span key={tag} className="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/30">
+                    {tag}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -66,7 +118,7 @@ export function MovieDetailPanel() {
           </div>
 
           <p className="text-white/80 text-sm md:text-base leading-relaxed mb-10">
-            {movie.blurb} A cinematic masterpiece that redefines its genre. {movie.title} takes you on an unforgettable journey.
+            {movie.description || movie.blurb || "No description available for this cinematic journey."}
           </p>
 
           {/* Streaming Availability */}
@@ -91,21 +143,30 @@ export function MovieDetailPanel() {
             </div>
           </div>
 
-          {/* Cast & Crew (Mocked) */}
-          <div className="mb-10">
-            <h3 className="font-display text-lg text-white mb-4">Cast & Crew</h3>
-            <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex-shrink-0 w-20 text-center">
-                  <div className="w-20 h-20 rounded-full bg-white/10 mb-2 overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${movie.id}${i}`} alt="Actor" />
+          {/* Cast & Crew */}
+          {(movie.cast || movie.crew) && (
+            <div className="mb-10">
+              <h3 className="font-display text-lg text-white mb-4">Cast & Crew</h3>
+              <div className="flex flex-wrap gap-x-8 gap-y-4 mb-6">
+                {movie.crew?.map((c, i) => (
+                  <div key={i} className="flex flex-col">
+                    <span className="text-[10px] text-white/50 uppercase tracking-widest">{c.job}</span>
+                    <span className="text-sm font-semibold text-white">{c.name}</span>
                   </div>
-                  <div className="text-xs font-medium text-white truncate">Actor Name</div>
-                  <div className="text-[10px] text-white/50 truncate">Character</div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+                {movie.cast?.map((actor, i) => (
+                  <div key={i} className="flex-shrink-0 w-20 text-center">
+                    <div className="w-20 h-20 rounded-full bg-white/10 mb-2 overflow-hidden flex items-center justify-center">
+                      <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${actor}`} alt={actor} />
+                    </div>
+                    <div className="text-[10px] font-medium text-white line-clamp-2">{actor}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Comments / Discussions */}
           <div>
@@ -127,6 +188,8 @@ export function MovieDetailPanel() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

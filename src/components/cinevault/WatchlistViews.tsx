@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useCineVault, type WatchlistItem } from "./CineVaultProvider";
 import { type Movie } from "@/lib/cinevault/movies";
-import { Check, Trash2, Clock, Info, MoreHorizontal, FolderPlus } from "lucide-react";
+import { Check, Trash2, Clock, Info, MoreHorizontal, FolderPlus, Star } from "lucide-react";
 import { VerdictBadge } from "./VerdictBadge";
 import {
   DropdownMenu,
@@ -62,6 +62,15 @@ export function WatchlistStack({ movies }: WatchlistProps) {
                 <div className="flex items-center gap-4 text-white/70 text-sm mb-6">
                   <span>{item.movie.year}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  {item.movie.rating ? (
+                    <>
+                      <div className="flex items-center gap-1 text-amber-400 font-bold">
+                        <Star className="w-4 h-4 fill-current" />
+                        {item.movie.rating.toFixed(1)}
+                      </div>
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    </>
+                  ) : null}
                   <span>{item.movie.runtime}m</span>
                 </div>
                 
@@ -84,6 +93,66 @@ export function WatchlistStack({ movies }: WatchlistProps) {
           </motion.div>
         ))}
       </AnimatePresence>
+    </div>
+  );
+}
+
+export function WatchlistCarousel({ movies }: WatchlistProps) {
+  const { setDetailMovieId } = useCineVault();
+  
+  return (
+    <div className="relative w-full overflow-x-auto pb-8 hide-scrollbar snap-x snap-mandatory">
+      <div className="flex gap-6 px-4 min-w-max">
+        {movies.map((item, i) => (
+          <motion.div
+            key={item.movie.id}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="w-72 snap-center"
+          >
+            <div className="group relative aspect-[2/3] rounded-3xl overflow-hidden shadow-xl border border-border bg-card">
+              <img 
+                src={item.movie.poster} 
+                alt={item.movie.title} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                <div className="flex items-center gap-2 mb-2">
+                  {item.state.watched && <VerdictBadge verdict={item.state.verdict!} size="xs" />}
+                </div>
+                <h3 className="font-display text-2xl font-bold text-white mb-2 line-clamp-2">
+                  {item.movie.title}
+                </h3>
+                <div className="flex items-center gap-3 text-white/70 text-xs mb-4">
+                  <span>{item.movie.year}</span>
+                  {item.movie.rating && (
+                    <div className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Star className="w-3 h-3 fill-current" />
+                      {item.movie.rating.toFixed(1)}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button 
+                    onClick={item.onMarkWatched}
+                    className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-xs font-bold hover:shadow-[0_0_15px_rgba(var(--primary),0.4)] transition-all"
+                  >
+                    {item.state.watched ? "Verdict" : "Watched"}
+                  </button>
+                  <button 
+                    onClick={() => setDetailMovieId(item.movie.id)}
+                    className="px-3 bg-white/10 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -119,6 +188,15 @@ export function WatchlistList({ movies }: WatchlistProps) {
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
               <span>{item.movie.year}</span>
               <span>·</span>
+              {item.movie.rating ? (
+                <>
+                  <div className="flex items-center gap-0.5 text-amber-500 font-bold">
+                    <Star className="w-3 h-3 fill-current" />
+                    {item.movie.rating.toFixed(1)}
+                  </div>
+                  <span>·</span>
+                </>
+              ) : null}
               <span>{item.movie.runtime}m</span>
             </div>
             {item.state.watched && (

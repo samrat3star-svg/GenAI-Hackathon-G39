@@ -17,6 +17,10 @@ export interface Movie {
   poster: string; // TMDB image URL
   moodTags: MoodTag[];
   blurb: string;
+  description?: string;
+  cast?: string[];
+  crew?: { job: string; name: string }[];
+  rating?: number;
 }
 
 const img = (path: string) => `https://image.tmdb.org/t/p/w500${path}`;

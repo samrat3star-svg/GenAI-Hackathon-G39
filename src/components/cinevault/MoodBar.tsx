@@ -15,14 +15,23 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   const handlePick = (mood: string) => {
-    setSelectedMood(mood);
+    const newMood = selectedMood === mood ? null : mood;
+    setSelectedMood(newMood);
     setQuery("");
-    onMoodSelect(mood);
+    onMoodSelect(newMood || "");
   };
 
+  const getTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "morning";
+    if (hour >= 12 && hour < 17) return "afternoon";
+    return "evening";
+  };
+
+  const timeOfDay = getTimeOfDay();
   const companionText = selectedMood
     ? "Setting the mood for..."
-    : "What's the evening calling for?";
+    : `What's the ${timeOfDay} calling for?`;
 
   return (
     <section className="relative z-10 w-full mb-12">

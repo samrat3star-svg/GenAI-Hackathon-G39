@@ -2,6 +2,7 @@ import type { ArchetypeId } from "./archetypes";
 
 export interface DnaOption {
   label: string;
+  icon?: string;
   // weights toward each archetype
   weights: Partial<Record<ArchetypeId, number>>;
 }
@@ -17,56 +18,56 @@ export const DNA_QUESTIONS: DnaQuestion[] = [
     id: "ending",
     prompt: "A film ends ambiguously. You feel…",
     options: [
-      { label: "Alive", weights: { "void-gazer": 2, architect: 1 } },
-      { label: "Cheated", weights: { "pulse-chaser": 2, empath: 1 } },
+      { label: "Alive", icon: "Sparkles", weights: { "void-gazer": 2, architect: 1 } },
+      { label: "Cheated", icon: "AlertCircle", weights: { "pulse-chaser": 2, empath: 1 } },
     ],
   },
   {
     id: "company",
     prompt: "You watch alone or with someone?",
     options: [
-      { label: "Alone — it's sacred", weights: { "void-gazer": 2, architect: 1 } },
-      { label: "Together — it's shared", weights: { empath: 2, "pulse-chaser": 1 } },
+      { label: "Alone — it's sacred", icon: "Moon", weights: { "void-gazer": 2, architect: 1 } },
+      { label: "Together — it's shared", icon: "Users", weights: { empath: 2, "pulse-chaser": 1 } },
     ],
   },
   {
     id: "runtime",
     prompt: "A 3-hour runtime is…",
     options: [
-      { label: "A commitment I honor", weights: { "void-gazer": 2, architect: 1 } },
-      { label: "A wall I won't climb", weights: { "pulse-chaser": 2 } },
+      { label: "A commitment I honor", icon: "Hourglass", weights: { "void-gazer": 2, architect: 1 } },
+      { label: "A wall I won't climb", icon: "Zap", weights: { "pulse-chaser": 2 } },
     ],
   },
   {
     id: "feeling",
     prompt: "You prefer to feel…",
     options: [
-      { label: "Disturbed and changed", weights: { "void-gazer": 2, architect: 1 } },
-      { label: "Comforted and safe", weights: { empath: 2, "pulse-chaser": 1 } },
+      { label: "Disturbed and changed", icon: "Ghost", weights: { "void-gazer": 2, architect: 1 } },
+      { label: "Comforted and safe", icon: "Heart", weights: { empath: 2, "pulse-chaser": 1 } },
     ],
   },
   {
     id: "show-tell",
     prompt: "Beautiful visuals or sharp dialogue?",
     options: [
-      { label: "Show me", weights: { "void-gazer": 2, "pulse-chaser": 1 } },
-      { label: "Tell me", weights: { architect: 2, empath: 1 } },
+      { label: "Show me", icon: "Eye", weights: { "void-gazer": 2, "pulse-chaser": 1 } },
+      { label: "Tell me", icon: "MessageSquare", weights: { architect: 2, empath: 1 } },
     ],
   },
   {
     id: "purpose",
     prompt: "You watch to…",
     options: [
-      { label: "Escape completely", weights: { "pulse-chaser": 2, empath: 1 } },
-      { label: "Understand something", weights: { architect: 2, "void-gazer": 1 } },
+      { label: "Escape completely", icon: "Compass", weights: { "pulse-chaser": 2, empath: 1 } },
+      { label: "Understand something", icon: "Lightbulb", weights: { architect: 2, "void-gazer": 1 } },
     ],
   },
   {
     id: "tears",
     prompt: "A film that makes you cry is…",
     options: [
-      { label: "A masterpiece", weights: { empath: 2, "void-gazer": 1 } },
-      { label: "An ambush", weights: { "pulse-chaser": 2, architect: 1 } },
+      { label: "A masterpiece", icon: "Trophy", weights: { empath: 2, "void-gazer": 1 } },
+      { label: "An ambush", icon: "ShieldAlert", weights: { "pulse-chaser": 2, architect: 1 } },
     ],
   },
 ];

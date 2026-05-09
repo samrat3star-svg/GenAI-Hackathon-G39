@@ -1,12 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search as SearchIcon, Plus } from "lucide-react";
+import { Search as SearchIcon, Plus, Star } from "lucide-react";
 import { AppShell } from "@/components/cinevault/AppShell";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
-import { MOVIES } from "@/lib/cinevault/movies";
+import { MOVIES, type Movie } from "@/lib/cinevault/movies";
 import { reelToast } from "@/components/cinevault/reelToast";
 import { reel } from "@/lib/cinevault/reel";
 import { motion, AnimatePresence } from "framer-motion";
+import { searchTMDB, getTMDBDetails, getTrendingMovies } from "@/lib/tmdb";
+import { suggestMoviesByMood } from "@/lib/openai";
+import { Sparkles, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/search")({
   component: SearchPage,
@@ -22,8 +25,8 @@ const VIBE_CHIPS = [
   "Dark", "Award-Winning", "Cult Favourite",
 ];
 
-function matchesVibe(movie: (typeof MOVIES)[number], vibe: string): boolean {
-  const tags = movie.moodTags.map((t) => t.toLowerCase());
+function matchesVibe(movie: Movie, vibe: string): boolean {
+  const tags = (movie.moodTags || []).map((t) => t.toLowerCase());
   switch (vibe) {
     case "Under 2 hrs":     return movie.runtime < 120;
     case "Classic":         return movie.year < 1990;
@@ -36,6 +39,65 @@ function matchesVibe(movie: (typeof MOVIES)[number], vibe: string): boolean {
   }
 }
 
+function TrendingCard({ 
+  movie, 
+  inWatchlist, 
+  onAdd, 
+  onDetail, 
+  delay 
+}: { 
+  movie: Movie; 
+  inWatchlist: boolean; 
+  onAdd: () => void; 
+  onDetail: () => void;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay }}
+      className="group relative flex gap-4 p-4 rounded-3xl bg-gradient-to-br from-card to-secondary/30 border border-border/50 hover:border-primary/30 transition-all duration-300"
+    >
+      <div 
+        className="w-24 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl cursor-pointer"
+        onClick={onDetail}
+      >
+        <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+      </div>
+      <div className="flex-1 flex flex-col justify-center py-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">Trending</span>
+          <span className="text-xs text-muted-foreground">{movie.year}</span>
+        </div>
+        <h3 className="font-display text-lg font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors cursor-pointer" onClick={onDetail}>
+          {movie.title}
+        </h3>
+        <div className="flex items-center gap-2 mt-1 mb-4">
+          {movie.rating && (
+            <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+              <Star className="w-3 h-3 fill-current" />
+              {movie.rating.toFixed(1)}
+            </div>
+          )}
+          <span className="text-xs text-muted-foreground truncate">{movie.genres.slice(0, 2).join(", ")}</span>
+        </div>
+        
+        {inWatchlist ? (
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">In Your Vault</span>
+        ) : (
+          <button
+            onClick={onAdd}
+            className="flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:shadow-[0_0_15px_rgba(var(--primary),0.4)] transition-all active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" /> Quick Add
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function SearchPage() {
   const { archetype, addMovie, watchlist, setDetailMovieId } = useCineVault();
   const navigate = useNavigate();
@@ -43,36 +105,84 @@ function SearchPage() {
   const [isFocused, setIsFocused] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
+  const [tmdbResults, setTmdbResults] = useState<Movie[]>([]);
+  const [trendingResults, setTrendingResults] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiResults, setIsAiResults] = useState(false);
 
   useEffect(() => {
     if (!archetype) navigate({ to: "/onboarding" });
     const authed = localStorage.getItem("cv_authed");
     if (!authed || authed !== "true") navigate({ to: "/" });
+
+    // Fetch trending on mount
+    const fetchTrending = async () => {
+      const trending = await getTrendingMovies();
+      setTrendingResults(trending);
+    };
+    fetchTrending();
   }, [archetype, navigate]);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setTmdbResults([]);
+      setIsAiResults(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      const results = await searchTMDB(q);
+      setTmdbResults(results);
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleAiMood = async () => {
+    if (!query.trim()) return;
+    setIsAiLoading(true);
+    setIsLoading(true);
+    try {
+      const titles = await suggestMoviesByMood(query);
+      const movies: Movie[] = [];
+      for (const title of titles) {
+        const results = await searchTMDB(title);
+        if (results.length > 0) {
+          // Get the best match
+          movies.push(results[0]);
+        }
+      }
+      setTmdbResults(movies);
+      setIsAiResults(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiLoading(false);
+      setIsLoading(false);
+    }
+  };
 
   const hasFilter = !!query.trim() || !!selectedGenre || !!selectedVibe;
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const source = q ? tmdbResults : MOVIES;
 
-    return MOVIES.filter((m) => {
-      // Text match (skip if no query)
-      const textMatch = !q || (
-        m.title.toLowerCase().includes(q) ||
-        m.genres.some((g) => g.toLowerCase().includes(q)) ||
-        String(m.year).includes(q)
-      );
-
+    return source.filter((m) => {
       // Genre chip match
       const genreMatch = !selectedGenre ||
-        m.genres.some((g) => g.toLowerCase().includes(selectedGenre.toLowerCase()));
+        (m.genres || []).some((g) => g.toLowerCase().includes(selectedGenre.toLowerCase()));
 
       // Vibe chip match
       const vibeMatch = !selectedVibe || matchesVibe(m, selectedVibe);
 
-      return textMatch && genreMatch && vibeMatch;
+      return genreMatch && vibeMatch;
     });
-  }, [query, selectedGenre, selectedVibe]);
+  }, [query, selectedGenre, selectedVibe, tmdbResults]);
 
   if (!archetype) return null;
 
@@ -94,6 +204,25 @@ function SearchPage() {
               placeholder="Search by title, director, genre, or feeling..."
               className="flex-1 bg-transparent text-lg text-foreground outline-none placeholder:text-muted-foreground font-medium"
             />
+            {query.trim().length > 3 && (
+              <button
+                onClick={handleAiMood}
+                disabled={isAiLoading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                  isAiLoading 
+                    ? "bg-secondary text-muted-foreground" 
+                    : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                }`}
+                title="Use AI to find movies based on this mood"
+              >
+                {isAiLoading ? (
+                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                Spark AI
+              </button>
+            )}
             {(query || selectedGenre || selectedVibe) && (
               <button
                 onClick={() => { setQuery(""); setSelectedGenre(null); setSelectedVibe(null); }}
@@ -158,22 +287,60 @@ function SearchPage() {
           </div>
         </div>
 
-        {/* Empty State — no filters active */}
+        {/* Empty State — trending movies */}
         {!hasFilter && (
-          <div className="mt-20 text-center">
-            <p className="text-muted-foreground font-display text-lg">
-              Search any movie title, director, or actor.
-            </p>
+          <div className="mt-16">
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-xl font-semibold text-foreground tracking-tight">Trending Now</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {trendingResults.slice(0, 4).map((movie, i) => {
+                const inWatchlist = watchlist.some((w) => w.movieId === movie.id);
+                return (
+                  <TrendingCard 
+                    key={movie.id} 
+                    movie={movie} 
+                    inWatchlist={inWatchlist} 
+                    onAdd={() => {
+                      addMovie(movie.id);
+                      reelToast(reel.add(archetype, movie));
+                    }}
+                    onDetail={() => setDetailMovieId(movie.id)}
+                    delay={i * 0.1}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mt-12 text-center border-t border-border pt-12">
+              <p className="text-muted-foreground font-display text-lg">
+                Or search any movie title, director, or actor.
+              </p>
+            </div>
           </div>
         )}
 
         {/* Results */}
         {hasFilter && (
           <div className="mt-10">
+            {isLoading && (
+              <div className="flex justify-center py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            
+            {!isLoading && (
+              <>
             {/* Results heading — only when there's a text query */}
             {query.trim() && (
               <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">
-                Results for <span className="text-primary italic">"{query}"</span>
+                {isAiResults ? (
+                  <>AI Mood Recommendations for <span className="text-primary italic">"{query}"</span></>
+                ) : (
+                  <>Results for <span className="text-primary italic">"{query}"</span></>
+                )}
                 {(selectedGenre || selectedVibe) && (
                   <span className="text-muted-foreground text-base font-normal ml-2">
                     · filtered
@@ -221,8 +388,17 @@ function SearchPage() {
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 mb-3">
                           <span>{movie.year}</span>
                           <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
-                          <span>{movie.runtime}m</span>
-                          <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
+                          {movie.rating ? (
+                            <>
+                              <div className="flex items-center gap-0.5 text-amber-500 font-semibold">
+                                <Star className="w-3 h-3 fill-current" />
+                                {movie.rating.toFixed(1)}
+                              </div>
+                              <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
+                            </>
+                          ) : null}
+                          <span>{movie.runtime > 0 ? `${movie.runtime}m` : ""}</span>
+                          {movie.runtime > 0 && <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />}
                           <span className="truncate">{movie.genres.slice(0, 2).join(", ")}</span>
                         </div>
 
@@ -257,6 +433,8 @@ function SearchPage() {
                 </div>
               )}
             </div>
+              </>
+            )}
           </div>
         )}
       </div>

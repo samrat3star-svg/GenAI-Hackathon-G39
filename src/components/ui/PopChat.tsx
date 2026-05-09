@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, X } from "lucide-react";
+import { Send, X, Volume2, Sparkles } from "lucide-react";
+import { askKernel } from "@/lib/openai";
 
 const GREETINGS = [
   "🍿 Still deciding? Tell me what kind of evening it is and I'll find the one.",
@@ -20,6 +21,7 @@ export function PopChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -55,17 +57,29 @@ export function PopChat() {
     }
   }, [messages]);
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
     
     setMessages(prev => [...prev, { role: "user", text }]);
     setInput("");
+    setIsLoading(true);
     
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: "assistant", text: "That sounds like a plan. Based on your vault, I'd say it's time for something iconic. How about a classic?" }]);
-    }, 800);
+    const response = await askKernel(text);
+    setMessages(prev => [...prev, { role: "assistant", text: response }]);
+    setIsLoading(false);
+  };
+
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 1.1;
+      utterance.rate = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleSuggestion = (text: string) => {
@@ -217,16 +231,34 @@ export function PopChat() {
               className="min-h-[220px] max-h-[320px] overflow-y-auto p-4 flex flex-col gap-3 hide-scrollbar bg-card"
             >
               {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`px-4 py-3 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
+                <div key={i} className={`flex flex-col ${msg.role === 'assistant' ? 'items-start' : 'items-end'}`}>
+                  <div className={`group relative px-4 py-3 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
                     msg.role === 'assistant' 
                       ? 'bg-secondary text-foreground rounded-tl-sm self-start' 
                       : 'bg-primary text-primary-foreground rounded-tr-sm self-end shadow-sm'
                   }`}>
                     {msg.text}
+                    {msg.role === 'assistant' && (
+                      <button 
+                        onClick={() => speak(msg.text)}
+                        className="absolute -right-8 bottom-0 p-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all"
+                        title="Speak response"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-secondary px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1 items-center">
+                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Suggestions Grid */}
@@ -255,9 +287,10 @@ export function PopChat() {
                 />
                 <button 
                   type="submit" 
-                  disabled={!input.trim()} 
-                  className="bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold rounded-full hover:scale-105 transition-transform disabled:opacity-50"
+                  disabled={!input.trim() || isLoading} 
+                  className="bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold rounded-full hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-1.5"
                 >
+                  {isLoading ? <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   Pop
                 </button>
               </form>

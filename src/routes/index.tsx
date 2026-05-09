@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import { MOVIES } from "@/lib/cinevault/movies";
+import { Logo } from "@/components/cinevault/Logo";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -21,7 +22,7 @@ function LandingAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(true);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const col1 = [...MOVIES, ...MOVIES].slice(0, 12);
   const col2 = [...MOVIES.slice(5), ...MOVIES].slice(0, 12);
@@ -100,7 +101,10 @@ function LandingAuthPage() {
       <div className="relative z-30 w-full max-w-sm px-4">
         <div className="backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl" style={{ backgroundColor: "rgba(15,15,15,0.75)" }}>
           <div className="text-center mb-8">
-            <h1 className="font-display text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>CineVault</h1>
+            <div className="flex items-center justify-center -ml-4 mb-2">
+              <Logo size={54} className="text-primary -mt-1" />
+              <h1 className="font-display text-4xl font-bold tracking-tight -ml-1" style={{ color: "#fff" }}>CineVault</h1>
+            </div>
             <p className="text-sm italic mt-2" style={{ color: "rgba(255,255,255,0.55)" }}>
               The watchlist that finally has opinions.
             </p>
@@ -141,20 +145,13 @@ function LandingAuthPage() {
               >
                 {isSignUp ? "Sign Up" : "Log In"}
               </button>
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="w-full bg-secondary/50 text-foreground border border-border rounded-full py-3 font-medium hover:border-primary transition-colors"
-              >
-                {isSignUp ? "Log In" : "Sign Up"}
-              </button>
             </div>
 
             <p 
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-xs text-muted-foreground text-center mt-4 cursor-pointer hover:text-primary transition-colors font-medium"
             >
-              {isSignUp ? "Already have an account? Log In" : "New here? Sign Up"}
+              {isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up"}
             </p>
           </form>
         </div>

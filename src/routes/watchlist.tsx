@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MoodBar } from "@/components/cinevault/MoodBar";
-import { WatchlistStack, WatchlistList } from "@/components/cinevault/WatchlistViews";
+import { WatchlistStack, WatchlistList, WatchlistCarousel } from "@/components/cinevault/WatchlistViews";
 import { VerdictSheet, type VerdictId } from "@/components/cinevault/VerdictSheet";
+import { DecisionEngine } from "@/components/cinevault/DecisionEngine";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
-import { MOVIES } from "@/lib/cinevault/movies";
+import { MOVIES, type Movie } from "@/lib/cinevault/movies";
+import { getTMDBDetails } from "@/lib/tmdb";
 import { AppShell } from "@/components/cinevault/AppShell";
-import { LayoutList, Layers, Film, ChevronDown, ChevronUp } from "lucide-react";
+import { LayoutList, Layers, Film, ChevronDown, ChevronUp, Play, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VerdictBadge } from "@/components/cinevault/VerdictBadge";
 
@@ -17,10 +19,12 @@ export const Route = createFileRoute("/watchlist")({
 function WatchlistPage() {
   const { archetype, watchlist, removeMovie, markWatched } = useCineVault();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"stack" | "list">("stack");
+  const [viewMode, setViewMode] = useState<"stack" | "list" | "carousel">("carousel");
   const [verdictTarget, setVerdictTarget] = useState<string | null>(null);
   const [activeMood, setActiveMood] = useState<string | null>(null);
+  const [isDecisionMode, setIsDecisionMode] = useState(false);
   const [watchedExpanded, setWatchedExpanded] = useState(true);
+  const [fetchedMovies, setFetchedMovies] = useState<Record<string, Movie>>({});
 
   useEffect(() => {
     if (!archetype) navigate({ to: "/onboarding" });
@@ -28,9 +32,31 @@ function WatchlistPage() {
     if (!authed || authed !== "true") navigate({ to: "/" });
   }, [archetype, navigate]);
 
+  useEffect(() => {
+    const missingIds = watchlist
+      .map((w) => w.movieId)
+      .filter((id) => !MOVIES.find((m) => m.id === id) && !fetchedMovies[id]);
+
+    if (missingIds.length === 0) return;
+
+    const fetchAll = async () => {
+      const newMovies: Record<string, Movie> = { ...fetchedMovies };
+      for (const id of missingIds) {
+        const m = await getTMDBDetails(id);
+        if (m) newMovies[id] = m;
+      }
+      setFetchedMovies(newMovies);
+    };
+
+    fetchAll();
+  }, [watchlist, fetchedMovies]);
+
   const items = useMemo(() => {
     let list = watchlist
-      .map((w) => ({ state: w, movie: MOVIES.find((m) => m.id === w.movieId) }))
+      .map((w) => ({ 
+        state: w, 
+        movie: MOVIES.find((m) => m.id === w.movieId) || fetchedMovies[w.movieId] 
+      }))
       .filter((x): x is { state: typeof watchlist[number]; movie: NonNullable<typeof x.movie> } => !!x.movie)
       .map(item => ({
         ...item,
@@ -42,19 +68,15 @@ function WatchlistPage() {
 
     if (activeMood) {
       const tag = activeMood.toLowerCase();
-      const matches = list.filter(i => 
-        i.movie.moodTags.some(t => tag.includes(t)) || 
-        i.movie.genres.some(g => tag.includes(g.toLowerCase()))
-      );
-      
-      const top3 = matches.slice(0, 3).map(i => ({
+      list = list.filter(i => 
+        i.movie.moodTags.some(t => tag.includes(t.toLowerCase())) || 
+        i.movie.genres.some(g => tag.includes(g.toLowerCase())) ||
+        tag.includes(i.movie.title.toLowerCase())
+      ).map(i => ({
         ...i,
         isHighlighted: true,
-        popchatLine: "This feels right for tonight."
+        popchatLine: `Perfect for your ${activeMood} mood.`
       }));
-      
-      const rest = list.filter(i => !top3.find(t => t.movie.id === i.movie.id));
-      list = [...top3, ...rest];
     }
 
     return list;
@@ -76,7 +98,20 @@ function WatchlistPage() {
             <span className="text-primary">{watchedItems.length} WATCHED</span>
           </div>
 
-          <MoodBar onMoodSelect={setActiveMood} />
+          <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
+            <div className="flex-1 w-full">
+              <MoodBar onMoodSelect={setActiveMood} />
+            </div>
+            {unwatchedItems.length > 0 && (
+              <button
+                onClick={() => setIsDecisionMode(true)}
+                className="flex items-center gap-2 px-6 py-4 rounded-3xl bg-primary text-primary-foreground font-bold shadow-[0_0_25px_rgba(var(--primary),0.4)] hover:scale-105 transition-transform group"
+              >
+                <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                Decide for Me
+              </button>
+            )}
+          </div>
 
           {/* UNWATCHED SECTION */}
           {unwatchedItems.length === 0 && watchedItems.length === 0 ? (
@@ -100,16 +135,25 @@ function WatchlistPage() {
             <div className="mt-4">
               {/* View Toggles */}
               <div className="flex justify-end mb-8 max-w-3xl mx-auto">
-                <div className="flex p-1 bg-secondary border border-border rounded-full">
+                <div className="flex p-1 bg-secondary border border-border rounded-full shadow-inner">
+                  <button
+                    onClick={() => setViewMode("carousel")}
+                    className={`p-2 rounded-full transition-all duration-300 ${viewMode === "carousel" ? "bg-primary text-primary-foreground shadow-lg scale-110" : "text-muted-foreground hover:text-foreground"}`}
+                    title="Carousel View"
+                  >
+                    <Play className="w-4 h-4 rotate-0" />
+                  </button>
                   <button
                     onClick={() => setViewMode("stack")}
-                    className={`p-2 rounded-full transition-colors ${viewMode === "stack" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-2 rounded-full transition-all duration-300 ${viewMode === "stack" ? "bg-primary text-primary-foreground shadow-lg scale-110" : "text-muted-foreground hover:text-foreground"}`}
+                    title="Stack View"
                   >
                     <Layers className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-2 rounded-full transition-colors ${viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`p-2 rounded-full transition-all duration-300 ${viewMode === "list" ? "bg-primary text-primary-foreground shadow-lg scale-110" : "text-muted-foreground hover:text-foreground"}`}
+                    title="List View"
                   >
                     <LayoutList className="w-4 h-4" />
                   </button>
@@ -117,7 +161,11 @@ function WatchlistPage() {
               </div>
 
               <AnimatePresence mode="wait">
-                {viewMode === "stack" ? (
+                {viewMode === "carousel" ? (
+                  <motion.div key="carousel" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }}>
+                    <WatchlistCarousel movies={unwatchedItems} />
+                  </motion.div>
+                ) : viewMode === "stack" ? (
                   <motion.div key="stack" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
                     <WatchlistStack movies={unwatchedItems} />
                   </motion.div>
@@ -199,6 +247,19 @@ function WatchlistPage() {
             setVerdictTarget(null);
           }}
         />
+
+        <AnimatePresence>
+          {isDecisionMode && (
+            <DecisionEngine 
+              movies={unwatchedItems.map(i => i.movie).sort(() => Math.random() - 0.5)}
+              onClose={() => setIsDecisionMode(false)}
+              onPick={(movie) => {
+                setIsDecisionMode(false);
+                setDetailMovieId(movie.id);
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </AppShell>
   );
