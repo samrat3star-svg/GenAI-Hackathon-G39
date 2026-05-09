@@ -82,9 +82,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   beforeLoad: ({ location }) => {
     if (typeof window === "undefined") return;
     const authed = localStorage.getItem("cv_authed");
-    const isAuthPage = location.pathname === "/auth";
+    const isAuthPage = location.pathname === "/" || location.pathname === "/auth";
     if ((!authed || authed !== "true") && !isAuthPage) {
-      throw redirect({ to: "/auth" });
+      throw redirect({ to: "/" });
     }
   },
   shellComponent: RootShell,

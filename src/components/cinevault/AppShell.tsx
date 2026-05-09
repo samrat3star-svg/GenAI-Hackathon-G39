@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("cv_authed");
     localStorage.removeItem("cv_archetype");
     setOpen(false);
-    navigate({ to: "/auth" });
+    navigate({ to: "/" });
   };
 
   return (
@@ -110,8 +110,50 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      {/* Mobile Profile Icon (Top Right) */}
-      <div className="md:hidden fixed top-4 right-4 z-50">
+      {/* Mobile Profile & Settings Icons (Top Right) */}
+      <div className="md:hidden fixed top-4 right-4 z-50 flex items-center gap-3">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button
+              aria-label="Settings"
+              className="w-11 h-11 rounded-full bg-card/80 backdrop-blur-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all shadow-lg active:scale-95"
+            >
+              <Settings2 className="h-5 w-5" />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="right" className="bg-card/95 backdrop-blur-xl border-l border-border z-[100]">
+            <SheetHeader>
+              <SheetTitle className="font-display text-foreground">Switch Archetype</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 grid gap-2">
+              {ARCHETYPE_IDS.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setArchetype(id);
+                    setOpen(false);
+                  }}
+                  className="flex items-center justify-between rounded-xl border border-border bg-secondary px-4 py-3 text-left text-sm hover:bg-secondary/80 hover:border-primary/40 transition-colors"
+                >
+                  <span className="font-display text-foreground">{ARCHETYPES[id].name}</span>
+                  <span className="text-xs text-muted-foreground">{ARCHETYPES[id].tagline}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-2">
+              <Button variant="secondary" onClick={() => { seedDemo(DEMO_SEED); setOpen(false); }}>
+                Seed 8 demo films
+              </Button>
+              <Button
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={handleSignOut}
+              >
+                Sign Out
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
         <Link 
           to="/profile" 
           title="Your Profile"

@@ -47,7 +47,7 @@ function SearchPage() {
   useEffect(() => {
     if (!archetype) navigate({ to: "/onboarding" });
     const authed = localStorage.getItem("cv_authed");
-    if (!authed || authed !== "true") navigate({ to: "/auth" });
+    if (!authed || authed !== "true") navigate({ to: "/" });
   }, [archetype, navigate]);
 
   const hasFilter = !!query.trim() || !!selectedGenre || !!selectedVibe;

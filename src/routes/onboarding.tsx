@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DNA_QUESTIONS, scoreDna } from "@/lib/cinevault/dna";
@@ -6,6 +6,13 @@ import { ARCHETYPES, type ArchetypeId } from "@/lib/cinevault/archetypes";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 
 export const Route = createFileRoute("/onboarding")({
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    const authed = localStorage.getItem("cv_authed");
+    if (!authed || authed !== "true") {
+      throw redirect({ to: "/" });
+    }
+  },
   component: Onboarding,
 });
 

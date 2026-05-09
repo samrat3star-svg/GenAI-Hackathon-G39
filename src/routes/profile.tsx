@@ -34,12 +34,13 @@ function ProfilePage() {
     setAvatarColor(localStorage.getItem("cv_avatar_color") || "");
 
     const authed = localStorage.getItem("cv_authed");
-    if (!authed || authed !== "true") navigate({ to: "/auth" });
+    if (!authed || authed !== "true") navigate({ to: "/" });
   }, [navigate]);
 
   const handleSignOut = () => {
     localStorage.removeItem("cv_authed");
-    navigate({ to: "/auth" });
+    localStorage.removeItem("cv_archetype");
+    navigate({ to: "/" });
   };
 
   // ── Derived stats ───────────────────────────────────────────────
