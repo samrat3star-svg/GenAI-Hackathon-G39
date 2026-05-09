@@ -4,16 +4,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 import "./styles.css";
 
-console.log("CineVault Entry Point Reached");
-
-const rootElement = document.getElementById("root");
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <RouterProvider router={router} />
-    </React.StrictMode>
-  );
-} else {
-  console.error("Root element not found!");
-}
+const rootElement = document.getElementById("root")!;
+ReactDOM.createRoot(rootElement).render(
+  <React.StrictMode>
+    <RouterProvider router={router} />
+  </React.StrictMode>
+);

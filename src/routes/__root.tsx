@@ -1,15 +1,13 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   redirect,
-  HeadContent,
-  Scripts,
+  useRouter,
 } from "@tanstack/react-router";
 
-import appCss from "../styles.css?url";
 import { CineVaultProvider } from "@/components/cinevault/CineVaultProvider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -58,28 +56,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "CineVault — The watchlist app that has opinions" },
-      { name: "description", content: "A watchlist with taste. Meet Reel — your most movie-obsessed friend." },
-      { name: "author", content: "CineVault" },
-      { property: "og:title", content: "CineVault" },
-      { property: "og:description", content: "A watchlist with taste. Meet Reel." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap",
-      },
-    ],
-  }),
   beforeLoad: ({ location }) => {
     if (typeof window === "undefined") return;
     const authed = localStorage.getItem("cv_authed");
@@ -88,29 +64,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       throw redirect({ to: "/" });
     }
   },
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-
-if (typeof window !== "undefined") {
-  window.onerror = function(msg, url, line, col, error) {
-    document.body.innerHTML = `
-      <div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace;">
-        <h1 style="font-size: 24px; margin-bottom: 16px;">CineVault: Production Crash Detected</h1>
-        <p><strong>Error:</strong> ${msg}</p>
-        <pre style="background: #000; padding: 20px; border-radius: 8px; margin-top: 20px; overflow: auto; max-width: 100%;">${error?.stack || 'No stack trace'}</pre>
-        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer;">Reload Page</button>
-      </div>
-    `;
-    return false;
-  };
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();

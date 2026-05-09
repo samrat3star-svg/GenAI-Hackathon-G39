@@ -1,21 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>CineVault — The watchlist app that has opinions</title>
-  </head>
-  <body class="bg-[#1a1a1a] text-white">
-    <div id="root"></div>
-    <script>
-      window.onerror = function(msg, url, line, col, error) {
-        var root = document.getElementById('root');
-        if (root) {
-          root.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><h1>Frontend Crash Caught:</h1><p>' + msg + '</p><p>Line: ' + line + '</p><pre>' + (error ? error.stack : '') + '</pre></div>';
-        }
-        return false;
-      };
-    </script>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CineVault — The watchlist app that has opinions</title>
+  <meta name="description" content="A watchlist with taste. Meet Reel — your most movie-obsessed friend." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
