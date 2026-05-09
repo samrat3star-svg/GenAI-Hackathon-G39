@@ -1,25 +1,41 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Send, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { PopcornMascot } from "./PopcornMascot";
-import { popchatReply, SUGGESTION_CHIPS, type PopChatMessage } from "@/lib/landing/popchat";
+import { popchatReply, type PopChatMessage } from "@/lib/landing/popchat";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+const GREETINGS = [
+  "🍿 Still deciding? Tell me what kind of evening it is and I'll find the one.",
+  "🍿 Your vault has good taste. Let me help you pick tonight's feature.",
+  "🍿 I've been waiting. What do you need from a film tonight?",
+  "🍿 Half the fun is the pick. What's the vibe?"
+];
+
+const SUGGESTIONS = [
+  "I need something easy",
+  "Surprise me tonight",
+  "Something to think about",
+  "I want to feel something"
+];
+
 export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [messages, setMessages] = useState<PopChatMessage[]>([
-    {
-      id: uid(),
-      role: "assistant",
-      text: "Hey, I'm PopChat 🍿 — tell me a mood and I'll find your movie.",
-    },
-  ]);
+  const [messages, setMessages] = useState<PopChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [listening, setListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (open && messages.length === 0) {
+      const randomGreeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+      setMessages([{ id: uid(), role: "assistant", text: randomGreeting }]);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const send = (text: string) => {
@@ -32,32 +48,9 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
     setInput("");
   };
 
-  const onMic = () => {
-    const SR =
-      (typeof window !== "undefined" &&
-        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
-      null;
-    if (!SR) {
-      setMessages((m) => [
-        ...m,
-        { id: uid(), role: "assistant", text: "Voice isn't supported in this browser — type away." },
-      ]);
-      return;
-    }
-    const rec = new SR();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    setListening(true);
-    rec.onresult = (e: any) => {
-      const t = e.results[0][0].transcript as string;
-      setInput(t);
-      setListening(false);
-      setTimeout(() => send(t), 100);
-    };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    rec.start();
+  const handleSuggestion = (text: string) => {
+    setInput(text);
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   return (
@@ -76,34 +69,42 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="fixed bottom-0 right-0 z-50 flex h-[80dvh] w-full flex-col overflow-hidden border border-white/10 bg-black/85 backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] sm:bottom-24 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-3xl"
+            className="fixed bottom-0 right-0 z-50 flex h-[80dvh] w-full flex-col overflow-hidden border border-border bg-card shadow-2xl sm:bottom-24 sm:right-6 sm:h-[560px] sm:w-96 sm:rounded-3xl"
           >
-            <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-3">
-                <PopcornMascot size={32} />
+                <motion.div 
+                  initial={{ y: 0 }}
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ duration: 0.5, iterationCount: 1 }}
+                  className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-base"
+                >
+                  🍿
+                </motion.div>
                 <div>
-                  <p className="font-display text-base font-semibold text-white">PopChat 🍿</p>
-                  <p className="text-[11px] text-white/50">Your movie buddy</p>
+                  <p className="font-display text-lg font-bold text-foreground leading-none">Kernel</p>
+                  <p className="text-xs text-muted-foreground italic mt-0.5">pops up when you need a pick</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="rounded-full p-2 text-white/60 hover:bg-white/5"
+                className="rounded-full p-2 text-muted-foreground hover:text-foreground transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            {/* Messages Area */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 hide-scrollbar min-h-[220px]">
               {messages.map((m) =>
                 m.role === "assistant" ? (
-                  <div key={m.id} className="flex items-start gap-2">
-                    <div className="mt-1"><PopcornMascot size={22} /></div>
-                    <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-white/5 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white/90">
+                  <div key={m.id} className="flex justify-start">
+                    <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-secondary text-foreground px-4 py-3 text-sm leading-relaxed self-start">
                       <p>{m.text}</p>
                       {m.picks && m.picks.length > 0 && (
-                        <ul className="mt-2 space-y-1 text-[13px] text-white/70">
+                        <ul className="mt-2 space-y-1 text-[13px] opacity-80 border-t border-foreground/10 pt-2">
                           {m.picks.map((p) => (
                             <li key={p.id}>· {p.title}</li>
                           ))}
@@ -113,7 +114,7 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
                   </div>
                 ) : (
                   <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary/90 px-3.5 py-2.5 text-sm font-medium text-primary-foreground">
+                    <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-3 text-sm self-end">
                       {m.text}
                     </div>
                   </div>
@@ -121,45 +122,41 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
               )}
             </div>
 
-            <div className="border-t border-white/5 px-3 pb-3 pt-2">
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {SUGGESTION_CHIPS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => send(c)}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/75 transition hover:bg-white/10 hover:text-white"
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
+            {/* Suggestions Grid */}
+            <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+              {SUGGESTIONS.map((chip) => (
+                <button 
+                  key={chip}
+                  onClick={() => handleSuggestion(chip)}
+                  className="text-[11px] px-3 py-2 rounded-full border border-border bg-secondary text-foreground hover:border-primary hover:text-primary transition-colors text-left truncate"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Area */}
+            <div className="border-t border-border p-4">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   send(input);
                 }}
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5"
+                className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-2 focus-within:border-primary/50 transition-colors"
               >
                 <input
+                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="What are you in the mood for?"
-                  className="flex-1 bg-transparent px-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                  placeholder="Tell Kernel your mood..."
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <button
-                  type="button"
-                  onClick={onMic}
-                  aria-label="Voice"
-                  className={`grid h-8 w-8 place-items-center rounded-full transition ${listening ? "bg-primary text-primary-foreground" : "text-white/70 hover:bg-white/5"}`}
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
-                <button
                   type="submit"
-                  aria-label="Send"
-                  className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground"
+                  disabled={!input.trim()}
+                  className="bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold rounded-full hover:scale-105 transition-transform disabled:opacity-50"
                 >
-                  <Send className="h-4 w-4" />
+                  Pop
                 </button>
               </form>
             </div>

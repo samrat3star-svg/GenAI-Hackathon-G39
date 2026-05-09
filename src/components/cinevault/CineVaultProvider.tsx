@@ -16,6 +16,7 @@ import {
   saveState,
   resetState,
   type WatchlistItem,
+  type Collection,
 } from "@/lib/cinevault/storage";
 import type { VerdictId } from "@/lib/cinevault/reel";
 
@@ -32,6 +33,12 @@ interface CineVaultContextValue {
   hasMovie: (movieId: string) => boolean;
   reset: () => void;
   seedDemo: (movieIds: string[]) => void;
+  collections: Collection[];
+  createCollection: (name: string, emoji: string, description: string) => void;
+  deleteCollection: (id: string) => void;
+  addMovieToCollection: (collectionId: string, movieId: string) => void;
+  removeMovieFromCollection: (collectionId: string, movieId: string) => void;
+  addCollaborator: (collectionId: string, name: string) => void;
 }
 
 const Ctx = createContext<CineVaultContextValue | null>(null);
@@ -39,19 +46,21 @@ const Ctx = createContext<CineVaultContextValue | null>(null);
 export function CineVaultProvider({ children }: { children: React.ReactNode }) {
   const [archetype, setArchetypeState] = useState<ArchetypeId | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const s = loadState();
     setArchetypeState(s.archetype);
     setWatchlist(s.watchlist);
+    setCollections(s.collections || []);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveState({ archetype, watchlist });
-  }, [archetype, watchlist, hydrated]);
+    saveState({ archetype, watchlist, collections });
+  }, [archetype, watchlist, collections, hydrated]);
 
   // Apply archetype to <html>
   useEffect(() => {
@@ -95,6 +104,7 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     resetState();
     setArchetypeState(null);
     setWatchlist([]);
+    setCollections([]);
   }, []);
 
   const seedDemo = useCallback((movieIds: string[]) => {
@@ -105,6 +115,55 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
         .map((id, i) => ({ movieId: id, addedAt: Date.now() - i * 1000, watched: false }));
       return [...additions, ...prev];
     });
+  }, []);
+
+  const createCollection = useCallback((name: string, emoji: string, description: string) => {
+    setCollections((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        name,
+        emoji,
+        description,
+        movieIds: [],
+        createdAt: Date.now(),
+        collaborators: [],
+      },
+    ]);
+  }, []);
+
+  const deleteCollection = useCallback((id: string) => {
+    setCollections((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const addMovieToCollection = useCallback((collectionId: string, movieId: string) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId
+          ? { ...c, movieIds: c.movieIds.includes(movieId) ? c.movieIds : [...c.movieIds, movieId] }
+          : c
+      )
+    );
+  }, []);
+
+  const removeMovieFromCollection = useCallback((collectionId: string, movieId: string) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId
+          ? { ...c, movieIds: c.movieIds.filter((id) => id !== movieId) }
+          : c
+      )
+    );
+  }, []);
+
+  const addCollaborator = useCallback((collectionId: string, name: string) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId
+          ? { ...c, collaborators: c.collaborators.includes(name) ? c.collaborators : [...c.collaborators, name] }
+          : c
+      )
+    );
   }, []);
 
   const [detailMovieId, setDetailMovieId] = useState<string | null>(null);
@@ -123,8 +182,14 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
       reset,
       seedDemo,
       setDetailMovieId,
+      collections,
+      createCollection,
+      deleteCollection,
+      addMovieToCollection,
+      removeMovieFromCollection,
+      addCollaborator,
     }),
-    [archetype, watchlist, detailMovieId, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo],
+    [archetype, watchlist, detailMovieId, collections, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo, createCollection, deleteCollection, addMovieToCollection, removeMovieFromCollection, addCollaborator],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

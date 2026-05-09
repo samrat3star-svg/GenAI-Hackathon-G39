@@ -20,8 +20,8 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
     onMoodSelect(mood);
   };
 
-  const companionText = selectedMood 
-    ? "Setting the mood for..." 
+  const companionText = selectedMood
+    ? "Setting the mood for..."
     : "What's the evening calling for?";
 
   return (
@@ -34,7 +34,7 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="text-lg md:text-xl font-display text-white/90 drop-shadow-md text-center"
+            className="text-lg md:text-xl font-display text-foreground drop-shadow-sm text-center"
           >
             {companionText} <span className="font-semibold text-primary">{selectedMood}</span>
           </motion.p>
@@ -48,14 +48,14 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
               e.preventDefault();
               if (query.trim()) handlePick(query.trim());
             }}
-            className="relative flex items-center bg-black/60 backdrop-blur-md border border-white/20 rounded-full px-5 py-3.5 focus-within:border-primary/50 transition-colors shadow-2xl"
+            className="relative flex items-center bg-card backdrop-blur-md border border-border rounded-full px-5 py-3.5 focus-within:border-primary/50 transition-colors shadow-md"
           >
-            <Popcorn className="w-5 h-5 text-primary/80 mr-3" />
+            <Popcorn className="w-5 h-5 text-primary/80 mr-3 flex-shrink-0" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Describe your mood..."
-              className="flex-1 bg-transparent text-white outline-none placeholder:text-white/40 font-medium"
+              className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground font-medium"
             />
           </form>
         </div>
@@ -64,17 +64,20 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
         <div className="w-full overflow-x-auto pb-4 hide-scrollbar">
           <div className="flex items-center justify-center gap-3 min-w-max px-4">
             {MOOD_CHIPS.map((chip) => (
-              <button
+              <motion.button
                 key={chip}
                 onClick={() => handlePick(chip)}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 border ${
                   selectedMood === chip
                     ? "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-105"
-                    : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10 hover:border-white/30"
+                    : "bg-secondary text-foreground/80 border-border hover:bg-secondary hover:border-primary/40"
                 }`}
               >
                 {chip}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>

@@ -1,16 +1,22 @@
 import type { VerdictId } from "@/lib/cinevault/reel";
 
 const LABELS: Record<VerdictId, { label: string; tone: string }> = {
-  acquitted: { label: "ACQUITTED", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
-  guilty: { label: "GUILTY PLEASURE", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
-  life: { label: "LIFE SENTENCE", tone: "bg-primary/15 text-primary border-primary/30" },
-  contempt: { label: "CONTEMPT", tone: "bg-destructive/15 text-destructive border-destructive/30" },
+  acquitted: { label: "ACQUITTED", tone: "text-green-500 border-green-500" },
+  guilty: { label: "GUILTY PLEASURE", tone: "text-amber-500 border-amber-500" },
+  life: { label: "LIFE SENTENCE", tone: "text-primary border-primary" },
+  contempt: { label: "CONTEMPT", tone: "text-red-500 border-red-500" },
 };
 
-export function VerdictBadge({ verdict }: { verdict: VerdictId }) {
+export function VerdictBadge({ verdict, size = "md" }: { verdict: VerdictId; size?: "xs" | "sm" | "md" }) {
   const v = LABELS[verdict];
+  const sizeClasses = {
+    xs: "text-[9px] px-1.5 py-0",
+    sm: "text-[10px] px-2 py-0.5",
+    md: "text-[10px] px-2 py-0.5",
+  };
+  
   return (
-    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.18em] ${v.tone}`}>
+    <span className={`inline-block border rounded-full font-bold uppercase tracking-widest w-fit ${sizeClasses[size]} ${v.tone}`}>
       {v.label}
     </span>
   );

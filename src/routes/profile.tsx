@@ -1,108 +1,231 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/cinevault/AppShell";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { MOVIES } from "@/lib/cinevault/movies";
-import { Film, Users, ShieldCheck, Clock, Settings } from "lucide-react";
+import { Film, ShieldCheck, Clock, Settings, LogOut, BarChart2 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
+// Format raw verdict IDs into display labels
+function formatVerdict(v: string): string {
+  switch (v) {
+    case "life":      return "Life Sentence";
+    case "guilty":    return "Guilty Pleasure";
+    case "acquitted": return "Acquitted";
+    case "contempt":  return "Contempt";
+    default:          return v;
+  }
+}
+
 function ProfilePage() {
   const { archetypeData, watchlist } = useCineVault();
+  const navigate = useNavigate();
   
-  if (!archetypeData) return null;
+  const [profileName, setProfileName] = useState("Movie Fan");
+  const [avatarEmoji, setAvatarEmoji] = useState("");
+  const [avatarColor, setAvatarColor] = useState("");
 
-  const watched = watchlist.filter(w => w.watched);
-  const recentWatches = watched.slice(0, 4).map(w => MOVIES.find(m => m.id === w.movieId)).filter(Boolean);
+  useEffect(() => {
+    setProfileName(localStorage.getItem("cv_display_name") || "Movie Fan");
+    setAvatarEmoji(localStorage.getItem("cv_avatar_emoji") || "");
+    setAvatarColor(localStorage.getItem("cv_avatar_color") || "");
+
+    const authed = localStorage.getItem("cv_authed");
+    if (!authed || authed !== "true") navigate({ to: "/auth" });
+  }, [navigate]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("cv_authed");
+    navigate({ to: "/auth" });
+  };
+
+  // ── Derived stats ───────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const watched = watchlist.filter((w) => w.watched);
+
+    // Top Verdict
+    const verdictCounts: Record<string, number> = {};
+    for (const item of watchlist) {
+      if (item.verdict) {
+        verdictCounts[item.verdict] = (verdictCounts[item.verdict] ?? 0) + 1;
+      }
+    }
+    const topVerdictRaw = Object.entries(verdictCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+    // Avg runtime of watched films
+    const watchedMovies = watched
+      .map((w) => MOVIES.find((m) => m.id === w.movieId))
+      .filter(Boolean) as typeof MOVIES;
+    const avgRuntime =
+      watchedMovies.length > 0
+        ? Math.round(watchedMovies.reduce((sum, m) => sum + m.runtime, 0) / watchedMovies.length)
+        : null;
+
+    // Favourite genre across all vaulted movies
+    const genreCounts: Record<string, number> = {};
+    for (const item of watchlist) {
+      const movie = MOVIES.find((m) => m.id === item.movieId);
+      if (movie) {
+        for (const g of movie.genres) {
+          genreCounts[g] = (genreCounts[g] ?? 0) + 1;
+        }
+      }
+    }
+    const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+    // Recent watched posters (up to 4)
+    const recentWatched = watched
+      .slice(0, 4)
+      .map((w) => MOVIES.find((m) => m.id === w.movieId))
+      .filter(Boolean) as typeof MOVIES;
+
+    return {
+      watchedCount: watched.length,
+      topVerdictRaw,
+      avgRuntime,
+      topGenre,
+      recentWatched,
+    };
+  }, [watchlist]);
+
+  if (!archetypeData) return null;
 
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto pt-12 px-6 pb-32">
         {/* Profile Header */}
-        <div className="relative flex flex-col items-center text-center mb-16">
+        <div className="relative flex flex-col items-center text-center mb-12">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/20 blur-3xl rounded-full" />
-          
-          <div className="relative w-28 h-28 rounded-full border-2 border-primary p-1 mb-4">
-            <div className="w-full h-full rounded-full bg-black/50 overflow-hidden relative">
-              <img src="https://api.dicebear.com/7.x/notionists/svg?seed=cinevault&backgroundColor=transparent" alt="Avatar" className="w-full h-full object-cover" />
+
+          <div className="relative w-28 h-28 rounded-full border-2 border-primary p-1 mb-4 flex items-center justify-center bg-card">
+            <div 
+              className="w-full h-full rounded-full flex items-center justify-center overflow-hidden shadow-inner"
+              style={{ backgroundColor: avatarColor || 'var(--primary)' }}
+            >
+              {avatarEmoji ? (
+                <span className="text-5xl">{avatarEmoji}</span>
+              ) : (
+                <span className="font-display text-4xl font-bold text-primary-foreground">
+                  {profileName ? profileName.charAt(0).toUpperCase() : "M"}
+                </span>
+              )}
             </div>
-            <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:scale-105 transition-transform">
+            <button 
+              onClick={() => navigate({ to: "/settings" })}
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground hover:scale-105 transition-transform shadow-sm"
+              title="Edit Profile"
+            >
               <Settings className="w-4 h-4" />
             </button>
           </div>
 
-          <h1 className="relative font-display text-3xl font-bold text-white tracking-tight mb-1">
-            Alex Cinematic
+          <h1 className="relative font-display text-3xl font-bold text-foreground tracking-tight mb-1">
+            {profileName}
           </h1>
           <p className="relative text-primary font-medium tracking-widest uppercase text-sm mb-4 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4" /> {archetypeData.name}
           </p>
-          <p className="relative text-white/60 text-sm max-w-sm">
+          <p className="relative text-muted-foreground text-sm max-w-sm">
             {archetypeData.tagline}
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <StatCard title="Total Vaulted" value={watchlist.length.toString()} icon={<Film className="w-4 h-4" />} />
-          <StatCard title="Watched" value={watched.length.toString()} icon={<Clock className="w-4 h-4" />} />
-          <StatCard title="Top Verdict" value="LIFE SENTENCE" valueColor="text-amber-500" icon={<ShieldCheck className="w-4 h-4 text-amber-500" />} />
-          <StatCard title="Collaborators" value="3" icon={<Users className="w-4 h-4" />} />
+        {/* Stats Grid — 2 cols mobile, 3 cols md, 5 cards total */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+          {/* 1 — Total Vaulted */}
+          <StatCard
+            title="Total Vaulted"
+            icon={<Film className="w-4 h-4" />}
+            value={watchlist.length.toString()}
+          />
+
+          {/* 2 — Watched */}
+          <StatCard
+            title="Watched"
+            icon={<Clock className="w-4 h-4" />}
+            value={stats.watchedCount.toString()}
+          />
+
+          {/* 3 — Top Verdict */}
+          <StatCard
+            title="Top Verdict"
+            icon={<ShieldCheck className="w-4 h-4 text-amber-500" />}
+            value={stats.topVerdictRaw ? formatVerdict(stats.topVerdictRaw) : "None yet"}
+            valueColor={stats.topVerdictRaw ? "text-amber-500" : "text-muted-foreground"}
+          />
+
+          {/* 4 — Avg Runtime */}
+          <StatCard
+            title="Avg Runtime"
+            icon={<Clock className="w-4 h-4" />}
+            value={stats.avgRuntime !== null ? `${stats.avgRuntime} mins` : "—"}
+          />
+
+          {/* 5 — Favourite Genre */}
+          <StatCard
+            title="Favourite Genre"
+            icon={<BarChart2 className="w-4 h-4" />}
+            value={stats.topGenre ?? "—"}
+          />
         </div>
 
-        {/* Collaborative Lists */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-bold text-white">Shared Vaults</h2>
-            <button className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">Create New</button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="group relative overflow-hidden rounded-2xl bg-black/40 border border-white/10 hover:border-white/20 p-5 transition-all">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 flex justify-between items-start mb-8">
-                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                  <Film className="w-6 h-6 text-white/70" />
-                </div>
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-black bg-zinc-800" />
-                  <div className="w-8 h-8 rounded-full border-2 border-black bg-zinc-700" />
-                </div>
-              </div>
-              <h3 className="relative z-10 font-display text-xl font-semibold text-white mb-1">Sunday Night Cinema</h3>
-              <p className="relative z-10 text-sm text-white/50">12 Movies · Priya added 'Whiplash'</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Watches */}
-        {recentWatches.length > 0 && (
-          <div>
-            <h2 className="font-display text-2xl font-bold text-white mb-6">Recent Watches</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {recentWatches.map((movie: any) => (
-                <div key={movie.id} className="group relative rounded-xl overflow-hidden aspect-[2/3]">
-                  <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                    <h4 className="text-white font-semibold text-sm line-clamp-1">{movie.title}</h4>
+        {/* Recently Watched poster strip */}
+        {stats.recentWatched.length > 0 && (
+          <div className="mb-10">
+            <h2 className="font-display text-lg text-foreground mb-3">Recently Watched</h2>
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+              {stats.recentWatched.map((movie) => (
+                <div key={movie.id} className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
+                  <div className="w-20 aspect-[2/3] rounded-xl overflow-hidden border border-border shadow-sm transition-transform duration-300">
+                    <img
+                      src={movie.poster}
+                      alt={movie.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    />
                   </div>
+                  <span className="text-xs text-muted-foreground truncate w-20 text-center">
+                    {movie.title}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {/* Sign Out */}
+        <div className="flex justify-center">
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 text-sm font-medium transition-all bg-secondary/50"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
       </div>
     </AppShell>
   );
 }
 
-function StatCard({ title, value, icon, valueColor = "text-white" }: { title: string, value: string, icon: React.ReactNode, valueColor?: string }) {
+function StatCard({
+  title,
+  value,
+  icon,
+  valueColor = "text-foreground",
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  valueColor?: string;
+}) {
   return (
-    <div className="bg-black/40 border border-white/10 rounded-2xl p-5 flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-white/50 text-sm font-medium">
+    <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-3 min-h-[120px]">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
         {icon} {title}
       </div>
-      <div className={`font-display text-3xl font-bold ${valueColor}`}>
+      <div className={`font-display text-xl font-bold leading-tight break-words ${valueColor}`}>
         {value}
       </div>
     </div>

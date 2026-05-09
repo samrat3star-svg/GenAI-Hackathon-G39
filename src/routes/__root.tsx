@@ -3,7 +3,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
+  redirect,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -79,6 +79,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
+  beforeLoad: ({ location }) => {
+    if (typeof window === "undefined") return;
+    const authed = localStorage.getItem("cv_authed");
+    const isAuthPage = location.pathname === "/auth";
+    if ((!authed || authed !== "true") && !isAuthPage) {
+      throw redirect({ to: "/auth" });
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

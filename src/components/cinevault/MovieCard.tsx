@@ -29,14 +29,14 @@ export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatche
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative flex gap-4 rounded-2xl border border-border bg-card p-3 shadow-sm"
+      className="group relative flex gap-4 rounded-2xl border border-border bg-card p-3 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5"
     >
-      <div className="relative h-[132px] w-[88px] flex-none overflow-hidden rounded-lg bg-muted">
+      <div className="relative h-[132px] w-[88px] flex-none overflow-hidden rounded-xl bg-muted transition-transform duration-300">
         <img
           src={movie.poster}
           alt={`${movie.title} poster`}
           loading="lazy"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
