@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -106,6 +106,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   );
+}
+
+if (typeof window !== "undefined") {
+  window.onerror = function(msg, url, line, col, error) {
+    document.body.innerHTML = `
+      <div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace;">
+        <h1 style="font-size: 24px; margin-bottom: 16px;">CineVault: Production Crash Detected</h1>
+        <p><strong>Error:</strong> ${msg}</p>
+        <pre style="background: #000; padding: 20px; border-radius: 8px; margin-top: 20px; overflow: auto; max-width: 100%;">${error?.stack || 'No stack trace'}</pre>
+        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer;">Reload Page</button>
+      </div>
+    `;
+    return false;
+  };
 }
 
 function RootComponent() {

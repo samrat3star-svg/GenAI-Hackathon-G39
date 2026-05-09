@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>CineVault — The watchlist app that has opinions</title>
+  </head>
+  <body class="bg-[#1a1a1a] text-white">
+    <div id="root"></div>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><h1>Frontend Crash Caught:</h1><p>' + msg + '</p><p>Line: ' + line + '</p><pre>' + (error ? error.stack : '') + '</pre></div>';
+        }
+        return false;
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
