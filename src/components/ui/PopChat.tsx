@@ -232,19 +232,36 @@ function isCompleteSentence(text: string): boolean {
   return /[.!?]$/.test(text.trim()) && text.trim().length > 30;
 }
 
+/** Strips filler phrases so the core search term reaches TMDB cleanly */
+function extractSearchQuery(text: string): string {
+  return text
+    .replace(/\b(i want to watch|i wanna watch|i want to see|i wanna see|let'?s watch|show me|find me|get me|give me|can you find|can you recommend|recommend me|suggest me|search for|look for|put on|play)\b\s*/gi, "")
+    .replace(/\b(a|an|the|some|something)\b\s*/gi, "")
+    .trim() || text.trim();
+}
+
 function detectIntent(text: string): "search" | "mood" | "chat" {
   const t = text.toLowerCase().trim();
 
+  // Watch intent — always means "find me content"
+  if (/\b(want to watch|wanna watch|want to see|wanna see|let'?s watch|love to watch|put on|watch something|watch a)\b/.test(t)) return "search";
+
   // Explicit search triggers
-  if (/\b(find|search|look for|show me|recommend|suggest|get me)\b/.test(t)) return "search";
-  if (/\b(movie|film)\b.{0,30}\b(about|with|starring|director|like|similar)\b/.test(t)) return "search";
-  if (/\b(i (am|feel|m|feeling|need|want|wanna|would like))\b/.test(t)) return "mood";
+  if (/\b(find|search|look for|show me|recommend|suggest|get me|give me|can you find|can you recommend|can you suggest)\b/.test(t)) return "search";
+  if (/\b(movie|film)\b.{0,30}\b(about|with|starring|director|like|similar|called|named)\b/.test(t)) return "search";
+
+  // Genre word + action verb → search (e.g. "I want a horror", "need a comedy tonight")
+  const genreWords = Object.keys(SEARCH_GENRE_MAP);
+  if (genreWords.some(g => t.includes(g)) && /\b(watch|see|find|show|want|need|like|give|get|play)\b/.test(t)) return "search";
+
+  // Mood/feeling — only when no watch/search context
+  if (/\b(i (am|feel|m|feeling))\b/.test(t)) return "mood";
+  if (/\b(i (need|want|wanna|would like))\b/.test(t)) return "mood";
   if (/\b(happy|sad|bored|excited|tired|anxious|romantic|lazy|energetic|curious|melancholy|dark|light|funny|scared|nostalgic|chill|cozy|hopeful)\b/.test(t)) return "mood";
 
-  const MOOD_CHIPS = ["comfort", "escape", "intense", "emotional", "beautiful", "smart", "chaotic", "easy", "quiet", "funny"];
+  const MOOD_CHIPS = ["comfort", "escape", "intense", "emotional", "beautiful", "smart", "chaotic", "easy", "quiet"];
   if (MOOD_CHIPS.some(m => t.includes(m))) return "mood";
 
-  // Suggestions that are mood-like
   if (/\b(something easy|feel something|something light|make me think|something beautiful|surprise me)\b/.test(t)) return "mood";
 
   return "chat";
@@ -320,8 +337,9 @@ export function PopChat() {
         const reply = archetype ? (VAULT_MISS_REPLY[archetype] ?? VAULT_MISS_REPLY["pulse-chaser"]) : VAULT_MISS_REPLY["pulse-chaser"];
         setMessages(prev => [...prev, { role: "assistant", text: reply }]);
         setIsLoading(false);
-        document.dispatchEvent(new CustomEvent("kernel-search", { detail: text }));
-        localStorage.setItem("cv_kernel_query", text);
+        const searchQuery = extractSearchQuery(text);
+        document.dispatchEvent(new CustomEvent("kernel-search", { detail: searchQuery }));
+        localStorage.setItem("cv_kernel_query", searchQuery);
         setTimeout(() => { setIsOpen(false); navigate({ to: "/search" }); }, 700);
       }
       return;
