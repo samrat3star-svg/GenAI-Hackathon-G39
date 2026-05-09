@@ -9,19 +9,19 @@ import { ArrowLeft } from "lucide-react";
 
 const IMAGE_MAP: Record<string, string> = {
   "Sparkles": "/onboarding/alive.jpg", // Alive
-  "AlertCircle": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop", // Cheated
-  "Moon": "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=800&auto=format&fit=crop", // Alone
-  "Users": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop", // Together
-  "Hourglass": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=800&auto=format&fit=crop", // Commitment
-  "Zap": "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop", // Wall
-  "Ghost": "https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=800&auto=format&fit=crop", // Disturbed
-  "Heart": "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?q=80&w=800&auto=format&fit=crop", // Comforted
-  "Eye": "https://images.unsplash.com/photo-1514306191717-452ec28c7814?q=80&w=800&auto=format&fit=crop", // Show me
-  "MessageSquare": "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=800&auto=format&fit=crop", // Tell me
-  "Compass": "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop", // Escape
-  "Lightbulb": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800&auto=format&fit=crop", // Understand
-  "Trophy": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800&auto=format&fit=crop", // Masterpiece
-  "ShieldAlert": "https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?q=80&w=800&auto=format&fit=crop", // Ambush
+  "AlertCircle": "/onboarding/cheated.jpg", // Cheated
+  "Moon": "/onboarding/alone.png", // Alone
+  "Users": "/onboarding/together.jpg", // Together
+  "Hourglass": "/onboarding/commitment_new.jpg", // Commitment
+  "Zap": "/onboarding/wall.jpg", // Wall
+  "Ghost": "/onboarding/disturbed.jpg", // Disturbed
+  "Heart": "/onboarding/comforted.jpg", // Comforted
+  "Eye": "/onboarding/showme.jpg", // Show me
+  "MessageSquare": "/onboarding/tellme.jpg", // Tell me
+  "Compass": "/onboarding/commitment.jpg", // Escape
+  "Lightbulb": "/onboarding/understand_new.jpg", // Understand
+  "Trophy": "/onboarding/understand.jpg", // Masterpiece
+  "ShieldAlert": "/onboarding/escape.jpg", // Ambush
 };
 
 export const Route = createFileRoute("/onboarding")({

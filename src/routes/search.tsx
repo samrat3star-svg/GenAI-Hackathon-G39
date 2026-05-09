@@ -73,12 +73,15 @@ function TrendingCard({
         <h3 className="font-display text-lg font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
           {movie.title}
         </h3>
-        <div className="flex items-center gap-2 mt-1 mb-4">
+        <div className="flex items-center gap-2 mt-1 mb-4 flex-wrap">
           {movie.rating && (
             <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
               <Star className="w-3 h-3 fill-current" />
               {movie.rating.toFixed(1)}
             </div>
+          )}
+          {movie.ageRating && (
+            <span className="border border-border px-1.5 rounded text-[10px] text-muted-foreground">{movie.ageRating}</span>
           )}
           <span className="text-xs text-muted-foreground truncate">{movie.genres.slice(0, 2).join(", ")}</span>
         </div>
@@ -383,7 +386,7 @@ function SearchPage() {
                         >
                           {movie.title}
                         </h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 mb-3">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 mb-3 flex-wrap">
                           <span>{movie.year}</span>
                           <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
                           {movie.rating ? (
@@ -395,6 +398,12 @@ function SearchPage() {
                               <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
                             </>
                           ) : null}
+                          {movie.ageRating && (
+                            <>
+                              <span className="border border-border px-1.5 rounded text-[10px] leading-none py-0.5">{movie.ageRating}</span>
+                              <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
+                            </>
+                          )}
                           <span>{movie.runtime > 0 ? `${movie.runtime}m` : ""}</span>
                           {movie.runtime > 0 && <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />}
                           <span className="truncate">{movie.genres.slice(0, 2).join(", ")}</span>

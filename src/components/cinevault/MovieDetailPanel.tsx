@@ -116,12 +116,26 @@ export function MovieDetailPanel() {
               </h2>
               <div className="flex items-center gap-4 text-white/60 text-sm font-medium">
                 <span>{movie.year}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                {movie.runtime > 0 && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span>{movie.runtime}m</span>
+                  </>
+                )}
+                {movie.ageRating && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span className="border border-white/20 px-1.5 rounded text-xs text-white/80">{movie.ageRating}</span>
+                  </>
+                )}
                 {movie.rating ? (
-                  <div className="flex items-center gap-1 text-amber-400">
-                    <Star className="w-4 h-4 fill-current" />
-                    <span className="font-bold">{movie.rating.toFixed(1)}</span>
-                  </div>
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <div className="flex items-center gap-1 text-amber-400">
+                      <Star className="w-4 h-4 fill-current" />
+                      <span className="font-bold">{movie.rating.toFixed(1)}</span>
+                    </div>
+                  </>
                 ) : null}
               </div>
             </div>

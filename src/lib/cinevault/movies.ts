@@ -21,6 +21,7 @@ export interface Movie {
   cast?: string[];
   crew?: { job: string; name: string }[];
   rating?: number;
+  ageRating?: string;
 }
 
 const img = (path: string) => `https://image.tmdb.org/t/p/w500${path}`;

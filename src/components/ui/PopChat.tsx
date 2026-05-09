@@ -194,11 +194,11 @@ export function PopChat() {
             </span>
 
             {/* Kernel Avatar — transparent BG, fluffy natural shape */}
-            <div className="w-20 h-20 group-hover:scale-110 transition-all duration-200 drop-shadow-2xl">
+            <div className="w-[60px] h-[60px] group-hover:scale-110 transition-all duration-200 drop-shadow-2xl overflow-hidden rounded-full flex items-center justify-center">
               <img
                 src="/kernel-avatar.png"
                 alt="Kernel - your AI Buddy"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain scale-[1.6]"
                 draggable={false}
               />
             </div>

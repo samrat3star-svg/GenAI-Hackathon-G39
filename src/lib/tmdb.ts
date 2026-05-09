@@ -55,7 +55,7 @@ export async function searchTMDB(query: string): Promise<Movie[]> {
 export async function getTMDBDetails(id: string): Promise<Movie | null> {
   try {
     const res = await fetch(
-      `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`
+      `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,release_dates`
     );
     if (!res.ok) throw new Error("TMDB details failed");
     const m = (await res.json()) as TMDBMovie & { 
@@ -63,10 +63,23 @@ export async function getTMDBDetails(id: string): Promise<Movie | null> {
       credits?: { 
         cast: { name: string }[], 
         crew: { job: string, name: string }[] 
-      } 
+      },
+      release_dates?: {
+        results: { iso_3166_1: string, release_dates: { certification: string }[] }[]
+      }
     };
     
     const genres = (m.genres || []).map((g) => g.name);
+    
+    // Extract US Certification (Age Rating)
+    let ageRating = "";
+    if (m.release_dates && m.release_dates.results) {
+      const usRelease = m.release_dates.results.find(r => r.iso_3166_1 === "US");
+      if (usRelease && usRelease.release_dates && usRelease.release_dates.length > 0) {
+        const cert = usRelease.release_dates.find(r => r.certification !== "");
+        if (cert) ageRating = cert.certification;
+      }
+    }
     
     return {
       id: String(m.id),
@@ -79,6 +92,7 @@ export async function getTMDBDetails(id: string): Promise<Movie | null> {
       blurb: m.overview ? m.overview.slice(0, 120) + "..." : "",
       description: m.overview,
       rating: m.vote_average,
+      ageRating,
       cast: m.credits?.cast.slice(0, 5).map(c => c.name),
       crew: m.credits?.crew.filter(c => ["Director", "Writer", "Producer"].includes(c.job)).slice(0, 3)
     };

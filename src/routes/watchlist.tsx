@@ -1,14 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MoodBar } from "@/components/cinevault/MoodBar";
-import { WatchlistStack, WatchlistList, WatchlistCarousel } from "@/components/cinevault/WatchlistViews";
+import { WatchlistList, WatchlistCarousel } from "@/components/cinevault/WatchlistViews";
 import { VerdictSheet, type VerdictId } from "@/components/cinevault/VerdictSheet";
 import { DecisionEngine } from "@/components/cinevault/DecisionEngine";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { MOVIES, type Movie } from "@/lib/cinevault/movies";
 import { getTMDBDetails } from "@/lib/tmdb";
 import { AppShell } from "@/components/cinevault/AppShell";
-import { LayoutList, Layers, Film, ChevronDown, ChevronUp, Play, Sparkles } from "lucide-react";
+import { LayoutList, Film, ChevronDown, ChevronUp, Play, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VerdictBadge } from "@/components/cinevault/VerdictBadge";
 
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/watchlist")({
 function WatchlistPage() {
   const { archetype, watchlist, removeMovie, markWatched, setDetailMovieId } = useCineVault();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"stack" | "list" | "carousel">("carousel");
+  const [viewMode, setViewMode] = useState<"list" | "carousel">("carousel");
   const [verdictTarget, setVerdictTarget] = useState<string | null>(null);
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [isDecisionMode, setIsDecisionMode] = useState(false);
@@ -142,13 +142,7 @@ function WatchlistPage() {
                   >
                     <Play className="w-4 h-4 rotate-0" />
                   </button>
-                  <button
-                    onClick={() => setViewMode("stack")}
-                    className={`p-2 rounded-full transition-all duration-300 ${viewMode === "stack" ? "bg-primary text-primary-foreground shadow-lg scale-110" : "text-muted-foreground hover:text-foreground"}`}
-                    title="Stack View"
-                  >
-                    <Layers className="w-4 h-4" />
-                  </button>
+
                   <button
                     onClick={() => setViewMode("list")}
                     className={`p-2 rounded-full transition-all duration-300 ${viewMode === "list" ? "bg-primary text-primary-foreground shadow-lg scale-110" : "text-muted-foreground hover:text-foreground"}`}
@@ -164,10 +158,7 @@ function WatchlistPage() {
                   <motion.div key="carousel" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }}>
                     <WatchlistCarousel movies={unwatchedItems} />
                   </motion.div>
-                ) : viewMode === "stack" ? (
-                  <motion.div key="stack" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                    <WatchlistStack movies={unwatchedItems} />
-                  </motion.div>
+
                 ) : (
                   <motion.div key="list" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
                     <WatchlistList movies={unwatchedItems} />
