@@ -19,6 +19,7 @@ import {
   type Collection,
 } from "@/lib/cinevault/storage";
 import type { VerdictId } from "@/lib/cinevault/reel";
+import { api } from "@/lib/cinevault/api";
 
 interface CineVaultContextValue {
   archetype: ArchetypeId | null;
@@ -43,6 +44,7 @@ interface CineVaultContextValue {
   avatarEmoji: string;
   avatarColor: string;
   updateProfile: (name: string, emoji: string, color: string) => void;
+  setDetailMovie: (movie: any | null) => void;
 }
 
 const Ctx = createContext<CineVaultContextValue | null>(null);
@@ -55,24 +57,53 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
   const [avatarEmoji, setAvatarEmoji] = useState("");
   const [avatarColor, setAvatarColor] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
 
   useEffect(() => {
+    // Local hydration (instant)
     const s = loadState();
     setArchetypeState(s.archetype);
     setWatchlist(s.watchlist);
     setCollections(s.collections || []);
-    
     setProfileName(localStorage.getItem("cv_display_name") || "Movie Fan");
     setAvatarEmoji(localStorage.getItem("cv_avatar_emoji") || "");
     setAvatarColor(localStorage.getItem("cv_avatar_color") || "");
-    
     setHydrated(true);
+
+    // Cloud hydration — merge Airtable state on top
+    const userId = localStorage.getItem("cv_user_id");
+    if (userId) {
+      api.fetchState(userId).then(res => {
+        if (res.success) {
+          if (res.archetype) setArchetypeState(res.archetype as ArchetypeId);
+          if (res.watchlist) setWatchlist(res.watchlist);
+          if (res.collections) setCollections(res.collections);
+
+          // Merge movie caches: cloud wins for known entries
+          const cloudCache = (res.movieCache && typeof res.movieCache === "object") ? res.movieCache : {};
+          const localCache = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+          const merged = { ...localCache, ...cloudCache };
+          localStorage.setItem("cv_movie_cache", JSON.stringify(merged));
+        }
+        setCloudHydrated(true);
+      });
+    } else {
+      setCloudHydrated(true);
+    }
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
+    // Always save locally
     saveState({ archetype, watchlist, collections });
-  }, [archetype, watchlist, collections, hydrated]);
+
+    // Push to cloud when both hydrations are done
+    if (!cloudHydrated) return;
+    const userId = localStorage.getItem("cv_user_id");
+    if (!userId) return;
+    const movieCache = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+    api.syncState(userId, archetype, watchlist, collections, movieCache);
+  }, [archetype, watchlist, collections, hydrated, cloudHydrated]);
 
   // Apply archetype to <html>
   useEffect(() => {
@@ -189,6 +220,10 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
 
   const [detailMovieId, setDetailMovieId] = useState<string | null>(null);
 
+  const setDetailMovie = useCallback((movie: any | null) => {
+    setDetailMovieId(movie ? movie.id : null);
+  }, []);
+
   const value = useMemo<CineVaultContextValue>(
     () => ({
       archetype,
@@ -213,8 +248,9 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
       avatarEmoji,
       avatarColor,
       updateProfile,
+      setDetailMovie,
     }),
-    [archetype, watchlist, detailMovieId, collections, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo, createCollection, deleteCollection, addMovieToCollection, removeMovieFromCollection, addCollaborator, profileName, avatarEmoji, avatarColor, updateProfile],
+    [archetype, watchlist, detailMovieId, collections, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo, createCollection, deleteCollection, addMovieToCollection, removeMovieFromCollection, addCollaborator, profileName, avatarEmoji, avatarColor, updateProfile, setDetailMovie],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -225,3 +261,6 @@ export function useCineVault() {
   if (!v) throw new Error("useCineVault must be used inside CineVaultProvider");
   return v;
 }
+
+// Re-export for consumers who import from CineVaultProvider
+export type { WatchlistItem, Collection } from "@/lib/cinevault/storage";

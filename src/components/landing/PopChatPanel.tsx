@@ -77,7 +77,7 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
                 <motion.div 
                   initial={{ y: 0 }}
                   animate={{ y: [0, -4, 0] }}
-                  transition={{ duration: 0.5, iterationCount: 1 }}
+                  transition={{ duration: 0.5, repeat: 0 }}
                   className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-base"
                 >
                   🍿

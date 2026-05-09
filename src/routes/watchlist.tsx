@@ -11,6 +11,8 @@ import { AppShell } from "@/components/cinevault/AppShell";
 import { LayoutList, Film, ChevronDown, ChevronUp, Play, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VerdictBadge } from "@/components/cinevault/VerdictBadge";
+import { CHIP_GENRE_MAP } from "@/lib/cinevault/mood";
+import { api } from "@/lib/cinevault/api";
 
 export const Route = createFileRoute("/watchlist")({
   component: WatchlistPage,
@@ -25,12 +27,26 @@ function WatchlistPage() {
   const [isDecisionMode, setIsDecisionMode] = useState(false);
   const [watchedExpanded, setWatchedExpanded] = useState(true);
   const [fetchedMovies, setFetchedMovies] = useState<Record<string, Movie>>({});
+  const [moodGenres, setMoodGenres] = useState<string[]>([]);
+  const [moodLoading, setMoodLoading] = useState(false);
 
   useEffect(() => {
     if (!archetype) navigate({ to: "/onboarding" });
     const authed = localStorage.getItem("cv_authed");
     if (!authed || authed !== "true") navigate({ to: "/" });
   }, [archetype, navigate]);
+
+  // Pick up mood routed from Kernel chat (same-page and cross-page)
+  useEffect(() => {
+    const kernelMood = localStorage.getItem("cv_kernel_mood");
+    if (kernelMood) {
+      localStorage.removeItem("cv_kernel_mood");
+      setActiveMood(kernelMood);
+    }
+    const handler = (e: Event) => setActiveMood((e as CustomEvent).detail);
+    document.addEventListener("kernel-mood", handler);
+    return () => document.removeEventListener("kernel-mood", handler);
+  }, []);
 
   useEffect(() => {
     const missingIds = watchlist
@@ -47,10 +63,52 @@ function WatchlistPage() {
       }
       // Merge with current state to avoid stale closure overwriting existing entries
       setFetchedMovies(prev => ({ ...prev, ...results }));
+
+      // ← TASK 10: persist to localStorage so Kernel vault-search can find them
+      const existing = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+      localStorage.setItem("cv_movie_cache", JSON.stringify({ ...existing, ...results }));
     };
 
     fetchAll();
   }, [watchlist]); // Only re-run when watchlist changes, not fetchedMovies
+
+  // Step 1: Resolve activeMood → moodGenres
+  useEffect(() => {
+    if (!activeMood) { setMoodGenres([]); return; }
+
+    // Fast path: preset chips
+    if (CHIP_GENRE_MAP[activeMood]) {
+      setMoodGenres(CHIP_GENRE_MAP[activeMood]);
+      setMoodLoading(false);
+      return;
+    }
+
+    // Slow path: free text → AI → fallback
+    setMoodLoading(true);
+    const timer = setTimeout(() => {
+      api.interpretMood(activeMood).then(genres => {
+        if (genres.length > 0) {
+          setMoodGenres(genres);
+        } else {
+          // Keyword fallback
+          const q = activeMood.toLowerCase();
+          const fb: string[] = [];
+          if (/horror|scary|ghost|creep|terror/.test(q))      fb.push("Horror", "Thriller");
+          if (/comedy|funny|laugh|fun|humor/.test(q))         fb.push("Comedy", "Animation");
+          if (/action|fight|war|battle/.test(q))              fb.push("Action", "Adventure");
+          if (/adventure|quest|explore|journey/.test(q))      fb.push("Adventure", "Fantasy");
+          if (/drama|sad|emotion|cry|tear/.test(q))           fb.push("Drama", "Romance");
+          if (/sci.fi|space|future|alien/.test(q))            fb.push("Sci-Fi");
+          if (/thrill|suspense|tense|crime|mystery/.test(q))  fb.push("Thriller", "Crime");
+          if (/romance|love|romantic|date/.test(q))           fb.push("Romance", "Drama");
+          if (/happy|fun|light|easy|comfort|chill/.test(q))   fb.push("Comedy", "Animation", "Family");
+          if (fb.length > 0) setMoodGenres(fb);
+        }
+        setMoodLoading(false);
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [activeMood]);
 
   const items = useMemo(() => {
     let list = watchlist
@@ -67,22 +125,27 @@ function WatchlistPage() {
         onRemove: () => removeMovie(item.movie.id)
       }));
 
-    if (activeMood) {
-      const tag = activeMood.toLowerCase();
-      list = list.filter(i => 
-        i.movie.moodTags.some(t => tag.includes(t.toLowerCase())) || 
-        i.movie.genres.some(g => tag.includes(g.toLowerCase())) ||
-        tag.includes(i.movie.title.toLowerCase())
-      ).map(i => ({
+    if (activeMood && moodGenres.length > 0) {
+      const moodLower = moodGenres.map(g => g.toLowerCase());
+      const scored = list.map(i => ({
         ...i,
-        isHighlighted: true,
-        popchatLine: `Perfect for your ${activeMood} mood.`
+        score: ((i.movie as any).genres as string[] || [])
+          .filter(g => {
+            const name = typeof g === "string" ? g : ((g as any)?.name ?? "");
+            return name && moodLower.includes(name.toLowerCase());
+          }).length,
+      }));
+      scored.sort((a, b) => b.score - a.score);
+      list = scored.map((item, idx) => ({
+        ...item,
+        isHighlighted: idx < 3 && item.score > 0,
+        popchatLine: idx < 3 && item.score > 0 ? "This feels right for tonight." : "",
       }));
     }
 
     return list;
   // fetchedMovies MUST be in deps so vault re-renders when async movie data arrives
-  }, [watchlist, fetchedMovies, activeMood, removeMovie]);
+  }, [watchlist, fetchedMovies, activeMood, moodGenres, removeMovie]);
 
   if (!archetype) return null;
 
@@ -105,6 +168,10 @@ function WatchlistPage() {
             showDecide={unwatchedItems.length > 0}
             onDecide={() => setIsDecisionMode(true)}
           />
+
+          {moodLoading && (
+            <p className="text-center text-xs text-primary animate-pulse mb-4">Reading your mood...</p>
+          )}
 
           {/* UNWATCHED SECTION */}
           {/* Show a loading indicator if watchlist has items but none are resolved yet */}
@@ -156,7 +223,7 @@ function WatchlistPage() {
               <AnimatePresence mode="wait">
                 {viewMode === "carousel" ? (
                   <motion.div key="carousel" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }}>
-                    <WatchlistCarousel movies={unwatchedItems} />
+                    <WatchlistCarousel key={`${activeMood}-${moodGenres.join(',')}`} movies={unwatchedItems} />
                   </motion.div>
 
                 ) : (

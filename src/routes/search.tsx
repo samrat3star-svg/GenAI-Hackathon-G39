@@ -130,6 +130,18 @@ function SearchPage() {
     fetchTrending();
   }, [archetype, navigate]);
 
+  // Pick up search query routed from Kernel chat
+  useEffect(() => {
+    const kernelQuery = localStorage.getItem("cv_kernel_query");
+    if (kernelQuery) {
+      localStorage.removeItem("cv_kernel_query");
+      setQuery(kernelQuery);
+    }
+    const handler = (e: Event) => setQuery((e as CustomEvent).detail);
+    document.addEventListener("kernel-search", handler);
+    return () => document.removeEventListener("kernel-search", handler);
+  }, []);
+
   useEffect(() => {
     const q = query.trim();
     if (!q) {

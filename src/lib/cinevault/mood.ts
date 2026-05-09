@@ -1,5 +1,19 @@
 import type { Movie, MoodTag } from "./movies";
 
+// Maps MoodBar chip labels directly to TMDB genre names (bypasses AI for instant response)
+export const CHIP_GENRE_MAP: Record<string, string[]> = {
+  "Comfort":   ["Animation", "Family", "Comedy", "Romance"],
+  "Escape":    ["Adventure", "Fantasy", "Action"],
+  "Funny":     ["Comedy", "Animation"],
+  "Easy":      ["Comedy", "Animation", "Family"],
+  "Quiet":     ["Documentary", "Drama"],
+  "Intense":   ["Thriller", "Crime", "Horror", "Action"],
+  "Emotional": ["Drama", "Romance"],
+  "Beautiful": ["Documentary", "Fantasy", "Romance", "Animation"],
+  "Smart":     ["Documentary", "Mystery", "Crime", "Sci-Fi"],
+  "Chaotic":   ["Comedy", "Action", "Thriller"],
+};
+
 export const MOOD_CHIPS: { label: string; tags: MoodTag[] }[] = [
   { label: "Something light", tags: ["light", "comfort"] },
   { label: "Make me think", tags: ["think"] },

@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import { MOVIES } from "@/lib/cinevault/movies";
 import { Logo } from "@/components/cinevault/Logo";
+import { api } from "@/lib/cinevault/api";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -23,6 +24,7 @@ function LandingAuthPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const col1 = [...MOVIES, ...MOVIES].slice(0, 12);
   const col2 = [...MOVIES.slice(5), ...MOVIES].slice(0, 12);
@@ -36,22 +38,36 @@ function LandingAuthPage() {
     return archetype ? "/watchlist" : "/onboarding";
   };
 
-  const handleSignUp = () => {
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+  const handleSignUp = async () => {
+    if (!email || !password) { setError("Please enter your email and password."); return; }
+    setIsLoading(true);
+    setError(null);
+    const name = email.split("@")[0];
+    const res = await api.signup(email, password, name);
+    setIsLoading(false);
+    if (res.success === false) {
+      setError(res.error || "Sign up failed. Try again.");
       return;
     }
     localStorage.setItem("cv_authed", "true");
+    localStorage.setItem("cv_user_id", res.userId || "");
+    localStorage.setItem("cv_user_name", res.name || name);
     navigate({ to: getDestination() });
   };
 
-  const handleLogIn = () => {
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+  const handleLogIn = async () => {
+    if (!email || !password) { setError("Please enter your email and password."); return; }
+    setIsLoading(true);
+    setError(null);
+    const res = await api.login(email, password);
+    setIsLoading(false);
+    if (!res.success) {
+      setError(res.error || "Invalid credentials. Try again.");
       return;
     }
-    // Mock auth — set session and navigate
     localStorage.setItem("cv_authed", "true");
+    localStorage.setItem("cv_user_id", res.userId || "");
+    localStorage.setItem("cv_user_name", res.name || "");
     navigate({ to: getDestination() });
   };
 
@@ -137,9 +153,10 @@ function LandingAuthPage() {
             <div className="flex flex-col gap-3 mt-2">
               <button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground rounded-full py-3 font-semibold hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-primary/20"
+                disabled={isLoading}
+                className="w-full bg-primary text-primary-foreground rounded-full py-3 font-semibold hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-primary/20 disabled:opacity-50"
               >
-                {isSignUp ? "Sign Up" : "Log In"}
+                {isLoading ? "Please wait..." : (isSignUp ? "Create Account" : "Sign In")}
               </button>
             </div>
 

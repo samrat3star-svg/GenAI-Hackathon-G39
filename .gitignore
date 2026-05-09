@@ -31,3 +31,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
+
+# n8n workflow (contains credentials)
+cinevault_g39_workflow.json
+
+# Handoff docs
+GEMINI_HANDOFF.md

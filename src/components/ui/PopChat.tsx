@@ -1,23 +1,259 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, X, Volume2, Sparkles } from "lucide-react";
-import { askKernel } from "@/lib/openai";
+import { X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { useCineVault } from "@/components/cinevault/CineVaultProvider";
+import { api } from "@/lib/cinevault/api";
+import { ARCHETYPES } from "@/lib/cinevault/archetypes";
 
-const GREETINGS = [
+const GREETINGS: Record<string, string[]> = {
+  "void-gazer": [
+    "🍿 What kind of silence are you looking for tonight?",
+    "🍿 A film should earn its runtime. What are we facing?",
+    "🍿 The deep end awaits. Tell me what you need.",
+  ],
+  "pulse-chaser": [
+    "🍿 Still deciding? Tell me the vibe — we'll find something that moves.",
+    "🍿 Your vault's loaded. What kind of night is this?",
+    "🍿 Let's not overthink it. What are we working with?",
+  ],
+  empath: [
+    "🍿 What do you need from a film tonight?",
+    "🍿 I've been waiting. Tell me what kind of evening it is.",
+    "🍿 Your vault has good taste. What's on your heart tonight?",
+  ],
+  architect: [
+    "🍿 Let's find something built right. What's the structure tonight?",
+    "🍿 The mechanism or the feeling? Tell me what you're after.",
+    "🍿 What kind of puzzle are we solving tonight?",
+  ],
+};
+
+const DEFAULT_GREETINGS = [
   "🍿 Still deciding? Tell me what kind of evening it is and I'll find the one.",
   "🍿 Your vault has good taste. Let me help you pick tonight's feature.",
-  "🍿 I've been waiting. What do you need from a film tonight?",
-  "🍿 Half the fun is the pick. What's the vibe?"
+  "🍿 Half the fun is the pick. What's the vibe?",
 ];
 
 const SUGGESTIONS = [
   "I need something easy",
   "Surprise me tonight",
   "Something to think about",
-  "I want to feel something"
+  "I want to feel something",
 ];
 
+const SEARCH_REPLY: Record<string, string> = {
+  "void-gazer": "Searching the depths of cinema for you...",
+  "pulse-chaser": "On it. Let's find something that moves.",
+  empath: "Looking for something that speaks to that.",
+  architect: "Running the search. Let's find the right structure.",
+};
+
+const MOOD_REPLY: Record<string, string> = {
+  "void-gazer": "Taking you to your vault. Let the mood guide what surfaces.",
+  "pulse-chaser": "Heading to your vault. The right pulse is in there.",
+  empath: "Going to your vault — the feeling will lead the way.",
+  architect: "Filtering your vault by what you need tonight.",
+};
+
+/** Extracts the core mood phrase from a free-text sentence, e.g. "I'm very sad today. What should I watch?" → "sad" */
+function extractMood(text: string): string {
+  const t = text.toLowerCase().trim();
+  // Pull out the key emotion word if present
+  const MOOD_WORDS = [
+    "happy", "sad", "bored", "excited", "tired", "anxious", "romantic",
+    "lazy", "energetic", "curious", "melancholy", "dark", "scared",
+    "nostalgic", "hopeful", "angry", "lonely", "calm", "gloomy", "upbeat",
+  ];
+  for (const w of MOOD_WORDS) {
+    if (t.includes(w)) return w;
+  }
+  const CHIP_LABELS = ["comfort", "escape", "intense", "emotional", "beautiful", "smart", "chaotic", "easy", "quiet", "funny"];
+  for (const c of CHIP_LABELS) {
+    if (t.includes(c)) return c;
+  }
+  return text; // fallback: full text
+}
+
+// Genre keywords → TMDB genre names (for vault search)
+const SEARCH_GENRE_MAP: Record<string, string[]> = {
+  horror:      ["Horror", "Thriller"],
+  scary:       ["Horror"],
+  thriller:    ["Thriller", "Crime"],
+  comedy:      ["Comedy"],
+  funny:       ["Comedy", "Animation"],
+  laugh:       ["Comedy"],
+  action:      ["Action", "Adventure"],
+  adventure:   ["Adventure", "Fantasy"],
+  drama:       ["Drama"],
+  sad:         ["Drama", "Romance"],
+  romance:     ["Romance", "Drama"],
+  romantic:    ["Romance"],
+  "sci-fi":    ["Sci-Fi"],
+  science:     ["Sci-Fi"],
+  space:       ["Sci-Fi"],
+  alien:       ["Sci-Fi"],
+  crime:       ["Crime", "Thriller"],
+  animation:   ["Animation"],
+  cartoon:     ["Animation", "Family"],
+  documentary: ["Documentary"],
+  fantasy:     ["Fantasy", "Adventure"],
+  mystery:     ["Mystery", "Crime"],
+  family:      ["Family", "Animation"],
+};
+
+type WatchlistItemLike = { movieId: string };
+
+/**
+ * Checks if the user's vault has movies matching the search query.
+ * Returns { found, genres } — genres to apply as mood filter, or [] for a title match.
+ */
+function searchVault(query: string, watchlist: WatchlistItemLike[]): { found: boolean; genres: string[] } {
+  try {
+    const cache: Record<string, any> = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+    const q = query.toLowerCase();
+
+    // Genre-based match
+    const matched = new Set<string>();
+    for (const [kw, genres] of Object.entries(SEARCH_GENRE_MAP)) {
+      if (q.includes(kw)) genres.forEach(g => matched.add(g));
+    }
+
+    if (matched.size > 0) {
+      const matchedLower = Array.from(matched).map(g => g.toLowerCase());
+      const hasGenreMatch = watchlist.some(w => {
+        const m = cache[w.movieId];
+        if (!m) return false;
+        const genres: string[] = (m.genres || []).map((g: any) =>
+          typeof g === "string" ? g.toLowerCase() : (g?.name ?? "").toLowerCase()
+        );
+        return genres.some(g => matchedLower.includes(g));
+      });
+      if (hasGenreMatch) return { found: true, genres: Array.from(matched) };
+    }
+
+    // Title-based match
+    const hasTitleMatch = watchlist.some(w => {
+      const m = cache[w.movieId];
+      return m?.title?.toLowerCase().includes(q);
+    });
+    if (hasTitleMatch) return { found: true, genres: [] };
+
+    return { found: false, genres: [] };
+  } catch {
+    return { found: false, genres: [] };
+  }
+}
+
+const VAULT_HIT_REPLY: Record<string, string> = {
+  "void-gazer": "You already have something like that in the vault. Let it surface.",
+  "pulse-chaser": "Your vault has exactly what you're after. Let's go.",
+  empath: "Something in your vault speaks to that. I'll show you.",
+  architect: "Already in your collection. Filtering now.",
+};
+
+const VAULT_MISS_REPLY: Record<string, string> = {
+  "void-gazer": "Nothing in your vault for that — searching TMDB.",
+  "pulse-chaser": "Not in your vault yet. Let's find it on TMDB.",
+  empath: "Your vault doesn't have that yet. Let me search for it.",
+  architect: "Not in your collection — running a TMDB search.",
+};
+
+const CHAT_REPLIES: Record<string, string[]> = {
+  "void-gazer": [
+    "The best films don't explain themselves. What are you trying to feel tonight?",
+    "Your vault already knows. Tell me what's weighing on you and I'll find the one.",
+    "Cinema isn't comfort — it's confrontation. What do you need to face?",
+    "Some films find you. Tell me more and we'll let the right one surface.",
+    "The void has answers. Give me something to work with.",
+  ],
+  "pulse-chaser": [
+    "Let's not overthink it — what's the energy right now?",
+    "Your vault's stacked. Tell me more and I'll zero in fast.",
+    "Quick: gut feeling. What kind of night is this?",
+    "I can work with that. Give me one more detail and we're locked in.",
+    "You're close. Tell me the vibe and I'll find the move.",
+  ],
+  empath: [
+    "Films can hold what words can't. What are you carrying tonight?",
+    "Tell me more — there's something in your vault that meets this.",
+    "I hear you. What would feel right: something that mirrors this, or something that lifts it?",
+    "Your taste runs deep. What does tonight need from a film?",
+    "I want to get this right. What are you really looking for?",
+  ],
+  architect: [
+    "Let's frame this properly. What's the structural need — narrative, tone, or theme?",
+    "Interesting. Is this about the craft or the subject matter?",
+    "Break it down for me: genre, era, or emotional function?",
+    "I can work with that. What's the one thing it must have?",
+    "Give me the parameters and I'll find the exact fit.",
+  ],
+};
+
+const GREETING_REPLIES: Record<string, string[]> = {
+  "void-gazer": [
+    "Still here. What's weighing on you tonight?",
+    "The silence brought you here. What do you need?",
+    "Good. Now tell me — what kind of film deserves tonight?",
+  ],
+  "pulse-chaser": [
+    "Hey! So what's the move tonight?",
+    "Let's go. What are we working with?",
+    "Good timing. What's the vibe?",
+  ],
+  empath: [
+    "Hey. How are you feeling tonight — really?",
+    "I'm here. What kind of evening is this?",
+    "Good to see you. What does tonight need?",
+  ],
+  architect: [
+    "Hey. Ready to find something worth your time?",
+    "Good. What are we building tonight — mood, genre, or something specific?",
+    "Hello. What's the criteria tonight?",
+  ],
+};
+
+function isGreeting(text: string): boolean {
+  return /^(hi|hey|hello|sup|yo|howdy|how are you|how's it going|what's up|wassup|hiya|good morning|good evening|good night|helo|hii|heya)[\s!?.]*$/i.test(text.trim());
+}
+
+let _lastReplyIndex = -1;
+function getPersonaReply(archetype: string | null, pool?: string[]): string {
+  const replies = pool ?? (archetype ? (CHAT_REPLIES[archetype] ?? CHAT_REPLIES["pulse-chaser"]) : CHAT_REPLIES["pulse-chaser"]);
+  let idx = Math.floor(Math.random() * replies.length);
+  if (replies.length > 1 && idx === _lastReplyIndex) {
+    idx = (idx + 1) % replies.length;
+  }
+  _lastReplyIndex = idx;
+  return replies[idx];
+}
+
+function isCompleteSentence(text: string): boolean {
+  return /[.!?]$/.test(text.trim()) && text.trim().length > 30;
+}
+
+function detectIntent(text: string): "search" | "mood" | "chat" {
+  const t = text.toLowerCase().trim();
+
+  // Explicit search triggers
+  if (/\b(find|search|look for|show me|recommend|suggest|get me)\b/.test(t)) return "search";
+  if (/\b(movie|film)\b.{0,30}\b(about|with|starring|director|like|similar)\b/.test(t)) return "search";
+  if (/\b(i (am|feel|m|feeling|need|want|wanna|would like))\b/.test(t)) return "mood";
+  if (/\b(happy|sad|bored|excited|tired|anxious|romantic|lazy|energetic|curious|melancholy|dark|light|funny|scared|nostalgic|chill|cozy|hopeful)\b/.test(t)) return "mood";
+
+  const MOOD_CHIPS = ["comfort", "escape", "intense", "emotional", "beautiful", "smart", "chaotic", "easy", "quiet", "funny"];
+  if (MOOD_CHIPS.some(m => t.includes(m))) return "mood";
+
+  // Suggestions that are mood-like
+  if (/\b(something easy|feel something|something light|make me think|something beautiful|surprise me)\b/.test(t)) return "mood";
+
+  return "chat";
+}
+
 export function PopChat() {
+  const { archetype, watchlist, collections } = useCineVault();
+  const navigate = useNavigate();
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [input, setInput] = useState("");
@@ -36,9 +272,7 @@ export function PopChat() {
     setMounted(true);
     const saved = localStorage.getItem("cv_fab_pos");
     if (saved) {
-      try {
-        setPos(JSON.parse(saved));
-      } catch (e) {}
+      try { setPos(JSON.parse(saved)); } catch {}
     } else {
       setPos({ x: window.innerWidth - 140, y: window.innerHeight - 80 });
     }
@@ -46,8 +280,9 @@ export function PopChat() {
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const randomGreeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
-      setMessages([{ role: "assistant", text: randomGreeting }]);
+      const pool = archetype ? (GREETINGS[archetype] ?? DEFAULT_GREETINGS) : DEFAULT_GREETINGS;
+      const greeting = pool[Math.floor(Math.random() * pool.length)];
+      setMessages([{ role: "assistant", text: greeting }]);
     }
   }, [isOpen]);
 
@@ -55,31 +290,81 @@ export function PopChat() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
     if (!text || isLoading) return;
-    
+
     setMessages(prev => [...prev, { role: "user", text }]);
     setInput("");
     setIsLoading(true);
-    
-    const response = await askKernel(text);
-    setMessages(prev => [...prev, { role: "assistant", text: response }]);
-    setIsLoading(false);
-  };
 
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.1;
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
+    const intent = detectIntent(text);
+
+    if (intent === "search") {
+      const vaultResult = searchVault(text, watchlist);
+
+      if (vaultResult.found) {
+        // Vault has matching movies — filter it like a mood
+        const reply = archetype ? (VAULT_HIT_REPLY[archetype] ?? VAULT_HIT_REPLY["pulse-chaser"]) : VAULT_HIT_REPLY["pulse-chaser"];
+        setMessages(prev => [...prev, { role: "assistant", text: reply }]);
+        setIsLoading(false);
+        const moodKey = vaultResult.genres.length > 0 ? vaultResult.genres[0] : text;
+        document.dispatchEvent(new CustomEvent("kernel-mood", { detail: moodKey }));
+        localStorage.setItem("cv_kernel_mood", moodKey);
+        setTimeout(() => { setIsOpen(false); navigate({ to: "/watchlist" }); }, 700);
+      } else {
+        // Not in vault — go to TMDB search
+        const reply = archetype ? (VAULT_MISS_REPLY[archetype] ?? VAULT_MISS_REPLY["pulse-chaser"]) : VAULT_MISS_REPLY["pulse-chaser"];
+        setMessages(prev => [...prev, { role: "assistant", text: reply }]);
+        setIsLoading(false);
+        document.dispatchEvent(new CustomEvent("kernel-search", { detail: text }));
+        localStorage.setItem("cv_kernel_query", text);
+        setTimeout(() => { setIsOpen(false); navigate({ to: "/search" }); }, 700);
+      }
+      return;
     }
+
+    if (intent === "mood") {
+      const reply = archetype ? (MOOD_REPLY[archetype] ?? MOOD_REPLY["pulse-chaser"]) : MOOD_REPLY["pulse-chaser"];
+      setMessages(prev => [...prev, { role: "assistant", text: reply }]);
+      setIsLoading(false);
+      // Extract core mood word for cleaner filtering
+      const moodPhrase = extractMood(text);
+      // CustomEvent for same-page; localStorage for cross-page navigation
+      document.dispatchEvent(new CustomEvent("kernel-mood", { detail: moodPhrase }));
+      localStorage.setItem("cv_kernel_mood", moodPhrase);
+      setTimeout(() => {
+        setIsOpen(false);
+        navigate({ to: "/watchlist" });
+      }, 700);
+      return;
+    }
+
+    // Greetings — instant persona response, no API call needed
+    if (isGreeting(text)) {
+      const pool = archetype ? (GREETING_REPLIES[archetype] ?? GREETING_REPLIES["pulse-chaser"]) : GREETING_REPLIES["pulse-chaser"];
+      setMessages(prev => [...prev, { role: "assistant", text: getPersonaReply(archetype, pool) }]);
+      setIsLoading(false);
+      return;
+    }
+
+    // General chat — call the Kernel AI
+    try {
+      const res = await api.kernelChat(text, archetype, watchlist, collections);
+      const reply = res.reply || res.message || res.text || res.response;
+      // Only show AI reply if it's a complete sentence; truncated replies fall back to persona pool
+      if (reply && isCompleteSentence(reply)) {
+        setMessages(prev => [...prev, { role: "assistant", text: reply }]);
+      } else {
+        setMessages(prev => [...prev, { role: "assistant", text: getPersonaReply(archetype) }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", text: getPersonaReply(archetype) }]);
+    }
+    setIsLoading(false);
   };
 
   const handleSuggestion = (text: string) => {
@@ -91,13 +376,9 @@ export function PopChat() {
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    dragOffset.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     setDragging(true);
-
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
   };
@@ -107,10 +388,8 @@ export function PopChat() {
     const fabHeight = 50;
     let newX = e.clientX - dragOffset.current.x;
     let newY = e.clientY - dragOffset.current.y;
-
     newX = Math.max(0, Math.min(newX, window.innerWidth - fabWidth));
     newY = Math.max(0, Math.min(newY, window.innerHeight - fabHeight));
-
     setPos({ x: newX, y: newY });
   };
 
@@ -120,7 +399,7 @@ export function PopChat() {
     setDragging(false);
 
     const distMoved = Math.sqrt(
-      Math.pow(e.clientX - dragStartPos.current.x, 2) + 
+      Math.pow(e.clientX - dragStartPos.current.x, 2) +
       Math.pow(e.clientY - dragStartPos.current.y, 2)
     );
 
@@ -128,39 +407,28 @@ export function PopChat() {
       setIsOpen(prev => !prev);
     }
 
-    // Snap logic
     setPos(currentPos => {
-      // Use approximations for FAB dimensions
       const fabW = 120;
       const fabH = 50;
-
       const distLeft = currentPos.x;
       const distRight = window.innerWidth - currentPos.x - fabW;
       const distTop = currentPos.y;
       const distBottom = window.innerHeight - currentPos.y - fabH;
-
       const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
       let finalX = currentPos.x;
       let finalY = currentPos.y;
       const padding = 16;
-
-      if (minDist === distLeft) {
-        finalX = padding;
-      } else if (minDist === distRight) {
-        finalX = window.innerWidth - fabW - padding;
-      } else if (minDist === distTop) {
-        finalY = padding;
-      } else {
-        finalY = window.innerHeight - fabH - padding;
-      }
-
+      if (minDist === distLeft) finalX = padding;
+      else if (minDist === distRight) finalX = window.innerWidth - fabW - padding;
+      else if (minDist === distTop) finalY = padding;
+      else finalY = window.innerHeight - fabH - padding;
       const snapped = { x: finalX, y: finalY };
       localStorage.setItem("cv_fab_pos", JSON.stringify(snapped));
       return snapped;
     });
   };
 
+  const archetypeName = archetype ? ARCHETYPES[archetype]?.name : null;
 
   return (
     <>
@@ -179,29 +447,15 @@ export function PopChat() {
               cursor: dragging ? "grabbing" : "grab",
               zIndex: 50,
               userSelect: "none",
-              touchAction: "none"
+              touchAction: "none",
             }}
-            className="group relative"
+            className="group relative flex items-center gap-2 bg-primary text-primary-foreground rounded-full shadow-xl hover:scale-105 transition-transform flex-row px-4 py-2.5"
           >
-            {/* Tooltip */}
-            <span className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-card border border-border text-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              your AI Buddy ✨
+            <span className="text-base leading-none">🍿</span>
+            <span className="text-sm font-display font-bold tracking-wide leading-none">Kernel</span>
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-background rounded-full flex items-center justify-center pointer-events-none">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             </span>
-
-            {/* Pulsing green online dot */}
-            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-background rounded-full flex items-center justify-center pointer-events-none z-10 shadow">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-            </span>
-
-            {/* Kernel Avatar — transparent BG, fluffy natural shape */}
-            <div className="w-[60px] h-[60px] group-hover:scale-110 transition-all duration-200 drop-shadow-2xl overflow-hidden rounded-full flex items-center justify-center">
-              <img
-                src="/kernel-avatar.png"
-                alt="Kernel - your AI Buddy"
-                className="w-full h-full object-contain scale-[1.6]"
-                draggable={false}
-              />
-            </div>
           </motion.button>
         )}
 
@@ -215,21 +469,23 @@ export function PopChat() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card/50 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <motion.div 
+                <motion.div
                   initial={{ y: 0 }}
                   animate={{ y: [0, -4, 0] }}
-                  transition={{ duration: 0.5, iterationCount: 1 }}
+                  transition={{ duration: 0.5, repeat: 0 }}
                   className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-base"
                 >
                   🍿
                 </motion.div>
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground leading-none">Kernel</h3>
-                  <p className="text-xs text-muted-foreground italic mt-0.5">pops up when you need a pick</p>
+                  <p className="text-xs text-muted-foreground italic mt-0.5">
+                    {archetypeName ? `tuned for ${archetypeName}` : "pops up when you need a pick"}
+                  </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)} 
+              <button
+                onClick={() => setIsOpen(false)}
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
               >
                 <X className="w-5 h-5" />
@@ -237,36 +493,27 @@ export function PopChat() {
             </div>
 
             {/* Messages Area */}
-            <div 
+            <div
               ref={scrollRef}
               className="min-h-[220px] max-h-[320px] overflow-y-auto p-4 flex flex-col gap-3 hide-scrollbar bg-card"
             >
               {messages.map((msg, i) => (
-                <div key={i} className={`flex flex-col ${msg.role === 'assistant' ? 'items-start' : 'items-end'}`}>
-                  <div className={`group relative px-4 py-3 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
-                    msg.role === 'assistant' 
-                      ? 'bg-secondary text-foreground rounded-tl-sm self-start' 
-                      : 'bg-primary text-primary-foreground rounded-tr-sm self-end shadow-sm'
+                <div key={i} className={`flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}>
+                  <div className={`px-4 py-3 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
+                    msg.role === "assistant"
+                      ? "bg-secondary text-foreground rounded-tl-sm"
+                      : "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
                   }`}>
                     {msg.text}
-                    {msg.role === 'assistant' && (
-                      <button 
-                        onClick={() => speak(msg.text)}
-                        className="absolute -right-8 bottom-0 p-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all"
-                        title="Speak response"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-secondary px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1 items-center">
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" />
+                  <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-secondary text-foreground text-sm flex gap-1 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
                 </div>
               )}
@@ -275,7 +522,7 @@ export function PopChat() {
             {/* Suggestions Grid */}
             <div className="px-4 pb-4 grid grid-cols-2 gap-2 bg-card">
               {SUGGESTIONS.map((chip) => (
-                <button 
+                <button
                   key={chip}
                   onClick={() => handleSuggestion(chip)}
                   className="text-[11px] px-3 py-2 rounded-full border border-border bg-secondary text-foreground hover:border-primary hover:text-primary transition-colors text-left truncate"
@@ -293,15 +540,14 @@ export function PopChat() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Tell Kernel your mood..."
+                  placeholder={archetype ? ARCHETYPES[archetype]?.moodPrompt : "Tell Kernel your mood..."}
                   className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                 />
-                <button 
-                  type="submit" 
-                  disabled={!input.trim() || isLoading} 
-                  className="bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold rounded-full hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-1.5"
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold rounded-full hover:scale-105 transition-transform disabled:opacity-50"
                 >
-                  {isLoading ? <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   Pop
                 </button>
               </form>
