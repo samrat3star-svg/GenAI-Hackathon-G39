@@ -1,6 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import { MOVIES } from "@/lib/cinevault/movies";
+import { api } from "@/lib/cinevault/api";
+import { useCineVault } from "@/components/cinevault/CineVaultProvider";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -30,31 +33,46 @@ function LandingAuthPage() {
   const col5 = [...MOVIES.slice(20), ...MOVIES].slice(0, 12);
   const col6 = [...MOVIES.slice(3), ...MOVIES].slice(0, 12);
 
-  const getDestination = () => {
-    const archetype = localStorage.getItem("cv_archetype");
-    return archetype ? "/watchlist" : "/onboarding";
+  const { setArchetype } = useCineVault();
+
+  const getDestination = (arch: string | null) => {
+    return arch ? "/watchlist" : "/onboarding";
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!email || !password) {
       setError("Please enter your email and password.");
       return;
     }
-    localStorage.setItem("cv_authed", "true");
-    navigate({ to: getDestination() });
+    const name = email.split("@")[0];
+    const result = await api.signup(email, password, name);
+    
+    if (result.success) {
+      localStorage.setItem("cv_authed", "true");
+      localStorage.setItem("cv_user_id", result.userId);
+      navigate({ to: "/onboarding" });
+    } else {
+      toast.error(result.error || "Signup failed");
+    }
   };
 
-  const handleLogIn = () => {
-    const authed = localStorage.getItem("cv_authed");
-    // For this mock app, we'll allow login if they've signed up before (cv_authed exists)
-    // or just allow it for demo purposes if they enter anything.
-    // But let's stick to the logic:
-    if (authed === "true") {
-      navigate({ to: getDestination() });
+  const handleLogIn = async () => {
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    const result = await api.login(email, password);
+    
+    if (result.success) {
+      localStorage.setItem("cv_authed", "true");
+      localStorage.setItem("cv_user_id", result.userId);
+      if (result.archetype) setArchetype(result.archetype);
+      if (result.movieCache && Object.keys(result.movieCache).length > 0) {
+        localStorage.setItem("cv_movie_cache", JSON.stringify(result.movieCache));
+      }
+      navigate({ to: getDestination(result.archetype) });
     } else {
-      // For a better first-time experience, let's just let them "log in" if they have data
-      // but if the site is totally fresh, force sign up.
-      setError("No account found. Please sign up first.");
+      toast.error(result.error || "Login failed");
     }
   };
 

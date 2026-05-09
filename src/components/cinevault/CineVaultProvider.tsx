@@ -19,14 +19,17 @@ import {
   type Collection,
 } from "@/lib/cinevault/storage";
 import type { VerdictId } from "@/lib/cinevault/reel";
+import { api } from "@/lib/cinevault/api";
+import { inferMoodTags } from "@/lib/cinevault/mood";
 
 interface CineVaultContextValue {
   archetype: ArchetypeId | null;
   archetypeData: Archetype | null;
   watchlist: WatchlistItem[];
   detailMovieId: string | null;
+  detailMovie: any | null;
   setArchetype: (id: ArchetypeId | null) => void;
-  setDetailMovieId: (id: string | null) => void;
+  setDetailMovie: (movie: any | null) => void;
   addMovie: (movieId: string) => void;
   removeMovie: (movieId: string) => void;
   markWatched: (movieId: string, verdict: VerdictId) => void;
@@ -48,6 +51,7 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
 
   useEffect(() => {
     const s = loadState();
@@ -55,12 +59,55 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     setWatchlist(s.watchlist);
     setCollections(s.collections || []);
     setHydrated(true);
+
+    // Hydration from Cloud
+    const userId = localStorage.getItem("cv_user_id");
+    if (userId) {
+      api.fetchState(userId).then(async res => {
+        if (res.success) {
+          if (res.archetype) setArchetypeState(res.archetype);
+          if (res.watchlist) setWatchlist(res.watchlist);
+          if (res.collections) setCollections(res.collections);
+
+          // Merge cloud cache with local cache
+          const cloudCache = (res.movieCache && typeof res.movieCache === "object") ? res.movieCache : {};
+          const localCache = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+          const mergedCache: Record<string, any> = { ...localCache, ...cloudCache };
+
+          // Fetch any watchlist movies missing from cache
+          const watchlistItems: WatchlistItem[] = res.watchlist || [];
+          const missing = watchlistItems.filter(w => !mergedCache[w.movieId]);
+          if (missing.length > 0) {
+            const fetched = await Promise.all(missing.map(w => api.fetchMovieById(w.movieId)));
+            for (const movie of fetched) {
+              if (movie) mergedCache[movie.id] = { ...movie, moodTags: inferMoodTags(movie) };
+            }
+          }
+
+          localStorage.setItem("cv_movie_cache", JSON.stringify(mergedCache));
+          // Trigger re-render so watchlist picks up the newly populated cache
+          setWatchlist(prev => [...prev]);
+        }
+        setCloudHydrated(true);
+      });
+    } else {
+      setCloudHydrated(true); // No user logged in — safe to sync immediately
+    }
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    // Wait for BOTH local and cloud hydration before syncing
+    // This prevents overwriting Airtable with empty state on page load
+    if (!hydrated || !cloudHydrated) return;
     saveState({ archetype, watchlist, collections });
-  }, [archetype, watchlist, collections, hydrated]);
+
+    // Cloud Sync
+    const userId = localStorage.getItem("cv_user_id");
+    if (userId) {
+      const movieCache = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+      api.syncState(userId, archetype, watchlist, collections, movieCache);
+    }
+  }, [archetype, watchlist, collections, hydrated, cloudHydrated]);
 
   // Apply archetype to <html>
   useEffect(() => {
@@ -166,7 +213,8 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const [detailMovieId, setDetailMovieId] = useState<string | null>(null);
+  const [detailMovie, setDetailMovie] = useState<any | null>(null);
+  const detailMovieId = detailMovie?.id || null;
 
   const value = useMemo<CineVaultContextValue>(
     () => ({
@@ -181,7 +229,8 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
       hasMovie,
       reset,
       seedDemo,
-      setDetailMovieId,
+      detailMovie,
+      setDetailMovie,
       collections,
       createCollection,
       deleteCollection,

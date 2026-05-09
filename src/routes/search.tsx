@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Search as SearchIcon, Plus } from "lucide-react";
 import { AppShell } from "@/components/cinevault/AppShell";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
-import { MOVIES } from "@/lib/cinevault/movies";
+import { api } from "@/lib/cinevault/api";
 import { reelToast } from "@/components/cinevault/reelToast";
 import { reel } from "@/lib/cinevault/reel";
+import { inferMoodTags } from "@/lib/cinevault/mood";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const Route = createFileRoute("/search")({
@@ -22,7 +23,7 @@ const VIBE_CHIPS = [
   "Dark", "Award-Winning", "Cult Favourite",
 ];
 
-function matchesVibe(movie: (typeof MOVIES)[number], vibe: string): boolean {
+function matchesVibe(movie: any, vibe: string): boolean {
   const tags = movie.moodTags.map((t) => t.toLowerCase());
   switch (vibe) {
     case "Under 2 hrs":     return movie.runtime < 120;
@@ -37,42 +38,71 @@ function matchesVibe(movie: (typeof MOVIES)[number], vibe: string): boolean {
 }
 
 function SearchPage() {
-  const { archetype, addMovie, watchlist, setDetailMovieId } = useCineVault();
+  const { archetype, addMovie, watchlist, setDetailMovie } = useCineVault();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
+  const [tmdbResults, setTmdbResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isDiscovery, setIsDiscovery] = useState(false);
 
   useEffect(() => {
-    if (!archetype) navigate({ to: "/onboarding" });
     const authed = localStorage.getItem("cv_authed");
-    if (!authed || authed !== "true") navigate({ to: "/" });
+    if (!authed || authed !== "true") { navigate({ to: "/" }); return; }
+    if (!archetype) navigate({ to: "/onboarding" });
   }, [archetype, navigate]);
 
-  const hasFilter = !!query.trim() || !!selectedGenre || !!selectedVibe;
+  // Pick up query routed from Kernel chat (localStorage = cross-page, event = same-page)
+  useEffect(() => {
+    const kernelQuery = localStorage.getItem("cv_kernel_query");
+    if (kernelQuery) {
+      localStorage.removeItem("cv_kernel_query");
+      setQuery(kernelQuery);
+    }
+    const handler = (e: Event) => setQuery((e as CustomEvent).detail);
+    document.addEventListener("kernel-search", handler);
+    return () => document.removeEventListener("kernel-search", handler);
+  }, []);
+
+  // Initial load: Trending
+  useEffect(() => {
+    setLoading(true);
+    api.fetchTrending().then(res => {
+      setTmdbResults(res.movies || []);
+      setLoading(false);
+    });
+  }, []);
+
+  // Search logic
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      if (!query.trim()) {
+        setIsDiscovery(false);
+        api.fetchTrending().then(res => setTmdbResults(res.movies || []));
+      }
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      const res = await api.smartSearch(query);
+      setTmdbResults(res.movies || []);
+      setIsDiscovery(res.isDiscovery || false);
+      setLoading(false);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return MOVIES.filter((m) => {
-      // Text match (skip if no query)
-      const textMatch = !q || (
-        m.title.toLowerCase().includes(q) ||
-        m.genres.some((g) => g.toLowerCase().includes(q)) ||
-        String(m.year).includes(q)
-      );
-
-      // Genre chip match
-      const genreMatch = !selectedGenre ||
-        m.genres.some((g) => g.toLowerCase().includes(selectedGenre.toLowerCase()));
-
-      // Vibe chip match
-      const vibeMatch = !selectedVibe || matchesVibe(m, selectedVibe);
-
-      return textMatch && genreMatch && vibeMatch;
+    return tmdbResults.filter(m => {
+      const genreMatch = !selectedGenre || 
+        m.genres.some((g: string) => g.toLowerCase().includes(selectedGenre.toLowerCase()));
+      return genreMatch;
     });
-  }, [query, selectedGenre, selectedVibe]);
+  }, [tmdbResults, selectedGenre]);
 
   if (!archetype) return null;
 
@@ -91,9 +121,10 @@ function SearchPage() {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by title, director, genre, or feeling..."
+              placeholder="Search by title..."
               className="flex-1 bg-transparent text-lg text-foreground outline-none placeholder:text-muted-foreground font-medium"
             />
+            {loading && <div className="mr-3 animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />}
             {(query || selectedGenre || selectedVibe) && (
               <button
                 onClick={() => { setQuery(""); setSelectedGenre(null); setSelectedVibe(null); }}
@@ -131,134 +162,101 @@ function SearchPage() {
               </div>
             </div>
           </div>
-
-          {/* Vibe Row */}
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2 px-1">Vibe</p>
-            <div className="overflow-x-auto hide-scrollbar" style={{ scrollbarWidth: "none" }}>
-              <div className="flex gap-2 min-w-max">
-                {VIBE_CHIPS.map((chip) => {
-                  const active = selectedVibe === chip;
-                  return (
-                    <button
-                      key={chip}
-                      onClick={() => setSelectedVibe(active ? null : chip)}
-                      className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 whitespace-nowrap ${
-                        active
-                          ? "bg-primary text-primary-foreground border-primary scale-105 shadow-[0_0_12px_rgba(var(--primary),0.4)]"
-                          : "bg-secondary text-foreground border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {chip}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Empty State — no filters active */}
-        {!hasFilter && (
-          <div className="mt-20 text-center">
-            <p className="text-muted-foreground font-display text-lg">
-              Search any movie title, director, or actor.
-            </p>
-          </div>
-        )}
-
         {/* Results */}
-        {hasFilter && (
-          <div className="mt-10">
-            {/* Results heading — only when there's a text query */}
-            {query.trim() && (
-              <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">
-                Results for <span className="text-primary italic">"{query}"</span>
-                {(selectedGenre || selectedVibe) && (
-                  <span className="text-muted-foreground text-base font-normal ml-2">
-                    · filtered
-                  </span>
-                )}
-              </h2>
-            )}
-            {!query.trim() && (selectedGenre || selectedVibe) && (
-              <h2 className="font-display text-xl font-semibold mb-6 text-foreground">
-                {[selectedGenre, selectedVibe].filter(Boolean).join(" · ")}
-              </h2>
-            )}
+        <div className="mt-10">
+          {/* Results heading */}
+          {query.trim() ? (
+            <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">
+              {isDiscovery
+                ? <><span className="text-primary italic">"{query}"</span> — showing best matches</>
+                : <>Results for <span className="text-primary italic">"{query}"</span></>}
+            </h2>
+          ) : (
+            <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">
+              Trending <span className="text-primary italic">This Week</span>
+            </h2>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <AnimatePresence>
-                {results.map((movie, i) => {
-                  const inWatchlist = watchlist.some((w) => w.movieId === movie.id);
-                  return (
-                    <motion.div
-                      key={movie.id}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="group relative flex gap-4 p-3 rounded-2xl bg-card border border-border hover:border-primary/30 hover:bg-secondary hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AnimatePresence mode="popLayout">
+              {results.map((movie, i) => {
+                const inWatchlist = watchlist.some((w) => w.movieId === movie.id);
+                return (
+                  <motion.div
+                    key={movie.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, delay: i * 0.03 }}
+                    className="group relative flex gap-4 p-3 rounded-2xl bg-card border border-border hover:border-primary/30 hover:bg-secondary transition-all duration-200"
+                  >
+                    <div
+                      className="w-24 aspect-[2/3] rounded-xl overflow-hidden relative shadow-lg cursor-pointer flex-shrink-0 bg-muted"
+                      onClick={() => setDetailMovie(movie)}
                     >
-                      <div
-                        className="w-24 aspect-[2/3] rounded-xl overflow-hidden relative shadow-lg cursor-pointer flex-shrink-0"
-                        onClick={() => setDetailMovieId(movie.id)}
-                      >
+                      {movie.poster && (
                         <img
                           src={movie.poster}
                           alt={movie.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         />
-                      </div>
+                      )}
+                    </div>
 
-                      <div className="flex-1 flex flex-col justify-center py-1 min-w-0">
-                        <h3
-                          className="font-display text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
-                          onClick={() => setDetailMovieId(movie.id)}
-                        >
-                          {movie.title}
-                        </h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 mb-3">
-                          <span>{movie.year}</span>
-                          <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
-                          <span>{movie.runtime}m</span>
-                          <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
-                          <span className="truncate">{movie.genres.slice(0, 2).join(", ")}</span>
-                        </div>
-
-                        {inWatchlist ? (
-                          <span className="text-xs font-semibold text-primary/80 uppercase tracking-widest">
-                            In Vault
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              addMovie(movie.id);
-                              reelToast(reel.add(archetype, movie));
-                            }}
-                            className="flex items-center gap-1.5 w-fit px-4 py-2 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors border border-border hover:border-primary"
-                          >
-                            <Plus className="w-4 h-4" /> Add
-                          </button>
+                    <div className="flex-1 flex flex-col justify-center py-1 min-w-0">
+                      <h3
+                        className="font-display text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
+                        onClick={() => setDetailMovie(movie)}
+                      >
+                        {movie.title}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 mb-3">
+                        <span>{movie.year}</span>
+                        <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
+                        <span className="truncate">{movie.genres.slice(0, 2).join(", ")}</span>
+                        {movie.rating > 0 && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-border flex-shrink-0" />
+                            <span className="text-primary/80">★ {movie.rating.toFixed(1)}</span>
+                          </>
                         )}
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
 
-              {results.length === 0 && (
-                <div className="col-span-2 text-center py-20">
-                  <SearchIcon className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-xl font-display text-foreground/80">Nothing matched.</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Try a different title, genre, or adjust your filters.
-                  </p>
-                </div>
-              )}
-            </div>
+                      {inWatchlist ? (
+                        <span className="text-xs font-semibold text-primary/80 uppercase tracking-widest">
+                          In Vault
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            addMovie(movie.id);
+                            // Cache movie data (with inferred moodTags) so vault can display and filter it
+                            const cache = JSON.parse(localStorage.getItem("cv_movie_cache") || "{}");
+                            cache[movie.id] = { ...movie, moodTags: inferMoodTags(movie) };
+                            localStorage.setItem("cv_movie_cache", JSON.stringify(cache));
+                            reelToast(reel.add(archetype, movie));
+                          }}
+                          className="flex items-center gap-1.5 w-fit px-4 py-2 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors border border-border hover:border-primary"
+                        >
+                          <Plus className="w-4 h-4" /> Add
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {!loading && results.length === 0 && (
+              <div className="col-span-2 text-center py-20">
+                <SearchIcon className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-xl font-display text-foreground/80">Nothing matched.</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </AppShell>
   );

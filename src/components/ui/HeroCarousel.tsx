@@ -5,62 +5,30 @@ import { Play, Plus, Clock, Calendar, Film } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 // Mock Data for Hero Carousel
-const HERO_MOVIES = [
-  {
-    id: "br2049",
-    title: "Blade Runner 2049",
-    year: 2017,
-    runtime: 164,
-    genres: ["Sci-Fi", "Mystery"],
-    poster: "https://image.tmdb.org/t/p/original/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
-    tagline: "Dark room. Good speakers.",
-    popchat: "Visually stunning but requires your full attention. Clear your evening.",
-  },
-  {
-    id: "dune",
-    title: "Dune",
-    year: 2021,
-    runtime: 155,
-    genres: ["Sci-Fi", "Adventure"],
-    poster: "https://image.tmdb.org/t/p/original/jYEW5xZkZk2WTrdbMGAPFuBqbDc.jpg",
-    tagline: "Pure momentum from start to finish.",
-    popchat: "An absolute scale monster. You'll feel the sand.",
-  },
-  {
-    id: "interstellar",
-    title: "Interstellar",
-    year: 2014,
-    runtime: 169,
-    genres: ["Sci-Fi", "Drama"],
-    poster: "https://image.tmdb.org/t/p/original/xJHokMbljvjEVAZS3xZZIsq8PEw.jpg",
-    tagline: "This one stays with people.",
-    popchat: "Have tissues ready. The score alone is a religious experience.",
-  },
-  {
-    id: "spiderverse",
-    title: "Spider-Man: Into the Spider-Verse",
-    year: 2018,
-    runtime: 117,
-    genres: ["Animation", "Action"],
-    poster: "https://image.tmdb.org/t/p/original/7MgziEGA17HIf4pWezP1K5cE4H2.jpg",
-    tagline: "A masterclass in style.",
-    popchat: "Every frame is a painting. Perfect for when you need energy.",
-  },
-  {
-    id: "whiplash",
-    title: "Whiplash",
-    year: 2014,
-    runtime: 106,
-    genres: ["Drama", "Music"],
-    poster: "https://image.tmdb.org/t/p/original/6bbZ6XyvgfjhQwbplnUh1lsj1ky.jpg",
-    tagline: "Best watched after midnight.",
-    popchat: "Stressful in the best way possible. Don't blink.",
-  }
-];
+import { useCineVault } from "@/components/cinevault/CineVaultProvider";
+import { api } from "@/lib/cinevault/api";
 
 export function HeroCarousel() {
+  const { setDetailMovie } = useCineVault();
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 40 });
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [movies, setMovies] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.fetchTrending().then(res => {
+      const top5 = (res.movies || []).slice(0, 5).map((m: any) => ({
+        id: m.id,
+        title: m.title,
+        year: m.year,
+        runtime: 120, // Placeholder
+        genres: m.genres,
+        poster: m.backdrop || m.poster,
+        tagline: m.genres.slice(0, 2).join(" · "),
+        popchat: m.overview.slice(0, 100) + "..."
+      }));
+      setMovies(top5);
+    });
+  }, []);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -85,7 +53,7 @@ export function HeroCarousel() {
   return (
     <div className="relative w-full h-dvh overflow-hidden bg-black text-white" ref={emblaRef}>
       <div className="flex h-full touch-pan-y">
-        {HERO_MOVIES.map((movie, index) => {
+        {movies.map((movie, index) => {
           const isActive = index === selectedIndex;
           return (
             <div key={movie.id} className="relative flex-[0_0_100%] min-w-0 h-full">
@@ -144,10 +112,13 @@ export function HeroCarousel() {
                           <Plus className="w-5 h-5" />
                           Add to Watchlist
                         </button>
-                        <Link to="/onboarding" className="flex items-center gap-2 px-6 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full font-medium hover:bg-white/20 transition-colors">
+                        <button 
+                          onClick={() => setDetailMovie(movie)}
+                          className="flex items-center gap-2 px-6 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full font-medium hover:bg-white/20 transition-colors"
+                        >
                           <Play className="w-5 h-5" />
                           View Details
-                        </Link>
+                        </button>
                       </div>
                     </motion.div>
                   )}
@@ -160,7 +131,7 @@ export function HeroCarousel() {
 
       {/* Progress Indicators */}
       <div className="absolute bottom-8 right-8 flex gap-2">
-        {HERO_MOVIES.map((_, index) => (
+        {movies.map((_, index) => (
           <div
             key={index}
             className={`h-1.5 rounded-full transition-all duration-500 ${

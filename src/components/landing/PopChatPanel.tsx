@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { popchatReply, type PopChatMessage } from "@/lib/landing/popchat";
+import { type PopChatMessage } from "@/lib/landing/popchat";
+import { api } from "@/lib/cinevault/api";
+import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -38,14 +40,27 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
     }
   }, [messages]);
 
-  const send = (text: string) => {
+  const { archetype, watchlist, collections } = useCineVault();
+  const [isTyping, setIsTyping] = useState(false);
+
+  const send = async (text: string) => {
     const t = text.trim();
     if (!t) return;
+    
     const userMsg: PopChatMessage = { id: uid(), role: "user", text: t };
-    const reply = popchatReply(t);
-    const aiMsg: PopChatMessage = { id: uid(), role: "assistant", ...reply };
-    setMessages((m) => [...m, userMsg, aiMsg]);
+    setMessages((m) => [...m, userMsg]);
     setInput("");
+    
+    setIsTyping(true);
+    const result = await api.kernelChat(t, archetype, watchlist, collections);
+    setIsTyping(false);
+
+    const aiMsg: PopChatMessage = { 
+      id: uid(), 
+      role: "assistant", 
+      text: result.reply || "Something went wrong." 
+    };
+    setMessages((m) => [...m, aiMsg]);
   };
 
   const handleSuggestion = (text: string) => {
@@ -119,6 +134,15 @@ export function PopChatPanel({ open, onClose }: { open: boolean; onClose: () => 
                     </div>
                   </div>
                 ),
+              )}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl rounded-tl-sm bg-secondary px-4 py-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0s" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0.2s" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                </div>
               )}
             </div>
 

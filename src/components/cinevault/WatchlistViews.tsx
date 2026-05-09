@@ -1,7 +1,8 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { useState } from "react";
 import { useCineVault, type WatchlistItem } from "./CineVaultProvider";
 import { type Movie } from "@/lib/cinevault/movies";
-import { Check, Trash2, Clock, Info, MoreHorizontal, FolderPlus } from "lucide-react";
+import { Check, Trash2, Info, MoreHorizontal, FolderPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { VerdictBadge } from "./VerdictBadge";
 import {
   DropdownMenu,
@@ -26,64 +27,109 @@ interface WatchlistProps {
 }
 
 export function WatchlistStack({ movies }: WatchlistProps) {
-  const { setDetailMovieId } = useCineVault();
-  
+  const { setDetailMovie } = useCineVault();
+  const [topIndex, setTopIndex] = useState(0);
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-18, 18]);
+  const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
+
+  const total = movies.length;
+  const current = movies[topIndex % total];
+  const next = movies[(topIndex + 1) % total];
+  const afterNext = movies[(topIndex + 2) % total];
+
+  const goNext = () => { x.set(0); setTopIndex(i => (i + 1) % total); };
+  const goPrev = () => { x.set(0); setTopIndex(i => (i - 1 + total) % total); };
+
+  const handleDragEnd = (_: any, info: any) => {
+    if (info.offset.x < -80 || info.velocity.x < -500) goNext();
+    else if (info.offset.x > 80 || info.velocity.x > 500) goPrev();
+    else x.set(0);
+  };
+
+  if (!current) return null;
+
   return (
-    <div className="relative h-[600px] w-full max-w-sm mx-auto perspective-1000">
-      <AnimatePresence>
-        {movies.map((item, i) => (
+    <div className="relative w-full max-w-sm mx-auto select-none">
+      {/* Stack depth cards */}
+      <div className="relative h-[580px]">
+        {/* Card 3 (deepest) */}
+        {afterNext && (
+          <div className="absolute inset-0 rounded-3xl overflow-hidden border border-border bg-card shadow-lg"
+            style={{ transform: "scale(0.88) translateY(-40px)", zIndex: 1 }}>
+            <img src={afterNext.movie.poster} alt="" className="w-full h-full object-cover opacity-60" />
+          </div>
+        )}
+        {/* Card 2 */}
+        {next && (
+          <div className="absolute inset-0 rounded-3xl overflow-hidden border border-border bg-card shadow-xl"
+            style={{ transform: "scale(0.94) translateY(-20px)", zIndex: 2 }}>
+            <img src={next.movie.poster} alt="" className="w-full h-full object-cover opacity-80" />
+          </div>
+        )}
+
+        {/* Top card — draggable */}
+        <AnimatePresence mode="wait">
           <motion.div
-            key={item.movie.id}
-            initial={{ opacity: 0, scale: 0.8, y: 100 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1 - i * 0.05, 
-              y: i * -20,
-              zIndex: 100 - i,
-              rotateX: i * -2
-            }}
-            exit={{ opacity: 0, scale: 0.8, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 group"
+            key={current.movie.id + topIndex}
+            className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-border bg-card cursor-grab active:cursor-grabbing"
+            style={{ x, rotate, opacity, zIndex: 10 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDragEnd={handleDragEnd}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
           >
-            <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl border border-border bg-card">
-              <img 
-                src={item.movie.poster} 
-                alt={item.movie.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                <div className="flex items-center gap-2 mb-2">
-                  {item.state.watched && <VerdictBadge verdict={item.state.verdict!} size="sm" />}
-                </div>
-                <h3 className="font-display text-3xl font-bold text-white mb-2 leading-tight">
-                  {item.movie.title}
-                </h3>
-                <div className="flex items-center gap-4 text-white/70 text-sm mb-6">
-                  <span>{item.movie.year}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <span>{item.movie.runtime}m</span>
-                </div>
-                
-                <div className="flex gap-3">
-                  <button 
-                    onClick={item.onMarkWatched}
-                    className="flex-1 bg-white text-black py-3 rounded-xl font-bold hover:bg-primary hover:text-white transition-colors"
-                  >
-                    {item.state.watched ? "Change Verdict" : "Mark Watched"}
-                  </button>
-                  <button 
-                    onClick={() => setDetailMovieId(item.movie.id)}
-                    className="w-12 h-12 bg-white/10 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
-                  >
-                    <Info className="w-6 h-6" />
-                  </button>
-                </div>
+            <img
+              src={current.movie.poster}
+              alt={current.movie.title}
+              className="w-full h-full object-cover pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6">
+              {current.state.watched && (
+                <div className="mb-2"><VerdictBadge verdict={current.state.verdict!} size="sm" /></div>
+              )}
+              <h3 className="font-display text-3xl font-bold text-white mb-1 leading-tight">
+                {current.movie.title}
+              </h3>
+              <div className="flex items-center gap-3 text-white/70 text-sm mb-5">
+                <span>{current.movie.year}</span>
+                {current.movie.runtime && <><span className="w-1 h-1 rounded-full bg-primary" /><span>{current.movie.runtime}m</span></>}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={current.onMarkWatched}
+                  className="flex-1 bg-white text-black py-3 rounded-xl font-bold hover:bg-primary hover:text-white transition-colors"
+                >
+                  {current.state.watched ? "Change Verdict" : "Mark Watched"}
+                </button>
+                <button
+                  onClick={() => setDetailMovie(current.movie)}
+                  className="w-12 h-12 bg-white/10 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
+                  <Info className="w-6 h-6" />
+                </button>
               </div>
             </div>
           </motion.div>
-        ))}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between mt-5 px-2">
+        <button onClick={goPrev} className="p-3 rounded-full bg-secondary border border-border hover:bg-primary hover:text-primary-foreground transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-sm text-muted-foreground font-medium">
+          {(topIndex % total) + 1} / {total}
+        </span>
+        <button onClick={goNext} className="p-3 rounded-full bg-secondary border border-border hover:bg-primary hover:text-primary-foreground transition-colors">
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
     </div>
   );
 }

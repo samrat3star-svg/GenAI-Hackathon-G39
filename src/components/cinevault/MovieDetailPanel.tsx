@@ -6,16 +6,17 @@ import { reelToast } from "@/components/cinevault/reelToast";
 import { reel } from "@/lib/cinevault/reel";
 
 export function MovieDetailPanel() {
-  const { archetype, detailMovieId, setDetailMovieId, hasMovie, addMovie } = useCineVault();
+  const { archetype, detailMovie, setDetailMovie, hasMovie, addMovie } = useCineVault();
   
-  const movie = detailMovieId ? MOVIES.find((m) => m.id === detailMovieId) : null;
+  const movie = detailMovie;
 
   if (!movie || !archetype) return null;
 
   const inWatchlist = hasMovie(movie.id);
+  const displayBlurb = movie.blurb || movie.overview;
 
   return (
-    <Sheet open={!!detailMovieId} onOpenChange={(open) => !open && setDetailMovieId(null)}>
+    <Sheet open={!!movie} onOpenChange={(open) => !open && setDetailMovie(null)}>
       <SheetContent side="right" className="w-full md:min-w-[500px] lg:min-w-[600px] p-0 bg-black border-l border-white/10 overflow-y-auto">
         <SheetTitle className="sr-only">{movie.title} Details</SheetTitle>
         
@@ -66,7 +67,7 @@ export function MovieDetailPanel() {
           </div>
 
           <p className="text-white/80 text-sm md:text-base leading-relaxed mb-10">
-            {movie.blurb} A cinematic masterpiece that redefines its genre. {movie.title} takes you on an unforgettable journey.
+            {displayBlurb}
           </p>
 
           {/* Streaming Availability */}

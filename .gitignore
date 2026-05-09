@@ -20,6 +20,18 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Environment & secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# n8n workflow (contains Airtable tokens, TMDB keys)
+cinevault_g39_workflow.json
+
+# Handoff & plan docs (may contain credentials)
+HANDOFF.md
+.plan/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

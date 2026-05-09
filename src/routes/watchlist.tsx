@@ -4,8 +4,10 @@ import { MoodBar } from "@/components/cinevault/MoodBar";
 import { WatchlistStack, WatchlistList } from "@/components/cinevault/WatchlistViews";
 import { VerdictSheet, type VerdictId } from "@/components/cinevault/VerdictSheet";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
+import { CHIP_GENRE_MAP } from "@/lib/cinevault/mood";
 import { MOVIES } from "@/lib/cinevault/movies";
 import { AppShell } from "@/components/cinevault/AppShell";
+import { api } from "@/lib/cinevault/api";
 import { LayoutList, Layers, Film, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VerdictBadge } from "@/components/cinevault/VerdictBadge";
@@ -20,17 +22,76 @@ function WatchlistPage() {
   const [viewMode, setViewMode] = useState<"stack" | "list">("stack");
   const [verdictTarget, setVerdictTarget] = useState<string | null>(null);
   const [activeMood, setActiveMood] = useState<string | null>(null);
+  const [moodGenres, setMoodGenres] = useState<string[]>([]);
+  const [moodLoading, setMoodLoading] = useState(false);
   const [watchedExpanded, setWatchedExpanded] = useState(true);
 
   useEffect(() => {
-    if (!archetype) navigate({ to: "/onboarding" });
     const authed = localStorage.getItem("cv_authed");
-    if (!authed || authed !== "true") navigate({ to: "/" });
+    if (!authed || authed !== "true") { navigate({ to: "/" }); return; }
+    if (!archetype) navigate({ to: "/onboarding" });
   }, [archetype, navigate]);
+
+  // Pick up mood routed from Kernel chat (localStorage = cross-page, event = same-page)
+  useEffect(() => {
+    const kernelMood = localStorage.getItem("cv_kernel_mood");
+    if (kernelMood) {
+      localStorage.removeItem("cv_kernel_mood");
+      setActiveMood(kernelMood);
+    }
+    const handler = (e: Event) => setActiveMood((e as CustomEvent).detail);
+    document.addEventListener("kernel-mood", handler);
+    return () => document.removeEventListener("kernel-mood", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!activeMood) { setMoodGenres([]); return; }
+    // Use hardcoded map for chip labels — fast and reliable
+    if (CHIP_GENRE_MAP[activeMood]) {
+      setMoodGenres(CHIP_GENRE_MAP[activeMood]);
+      setMoodLoading(false);
+      return;
+    }
+    // Free-text input — debounce 600ms to avoid rapid-fire API calls
+    setMoodLoading(true);
+    const timer = setTimeout(() => {
+      api.interpretMood(activeMood).then(genres => {
+        if (genres.length > 0) {
+          setMoodGenres(genres);
+        } else {
+          // API unavailable — keyword fallback
+          const q = activeMood.toLowerCase();
+          const fb: string[] = [];
+          if (/horror|scary|ghost|creep|terror/.test(q))      fb.push("Horror", "Thriller");
+          if (/comedy|funny|laugh|fun|humor/.test(q))         fb.push("Comedy", "Animation");
+          if (/action|fight|war|battle/.test(q))              fb.push("Action", "Adventure");
+          if (/adventure|quest|explore|journey/.test(q))      fb.push("Adventure", "Fantasy");
+          if (/drama|sad|emotion|cry|tear/.test(q))           fb.push("Drama", "Romance");
+          if (/sci.fi|space|future|alien/.test(q))            fb.push("Sci-Fi");
+          if (/thrill|suspense|tense|crime|mystery/.test(q))  fb.push("Thriller", "Crime");
+          if (/document|real|true story|biopic/.test(q))      fb.push("Documentary");
+          if (/romance|love|romantic|date/.test(q))           fb.push("Romance", "Drama");
+          if (/anim|cartoon|family|kids/.test(q))             fb.push("Animation", "Family");
+          if (/happy|fun|light|easy|comfort|chill/.test(q))   fb.push("Comedy", "Animation", "Family");
+          if (fb.length > 0) setMoodGenres(fb);
+        }
+        setMoodLoading(false);
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [activeMood]);
+
+  const movieCache = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("cv_movie_cache") || "{}"); } catch { return {}; }
+  }, [watchlist]);
 
   const items = useMemo(() => {
     let list = watchlist
-      .map((w) => ({ state: w, movie: MOVIES.find((m) => m.id === w.movieId) }))
+      .map((w) => {
+        const movie = MOVIES.find((m) => m.id === w.movieId) ||
+          (movieCache[w.movieId] ? { ...movieCache[w.movieId], moodTags: movieCache[w.movieId].moodTags || [] } : undefined);
+        return { state: w, movie };
+      })
       .filter((x): x is { state: typeof watchlist[number]; movie: NonNullable<typeof x.movie> } => !!x.movie)
       .map(item => ({
         ...item,
@@ -40,25 +101,27 @@ function WatchlistPage() {
         onRemove: () => removeMovie(item.movie.id)
       }));
 
-    if (activeMood) {
-      const tag = activeMood.toLowerCase();
-      const matches = list.filter(i => 
-        i.movie.moodTags.some(t => tag.includes(t)) || 
-        i.movie.genres.some(g => tag.includes(g.toLowerCase()))
-      );
-      
-      const top3 = matches.slice(0, 3).map(i => ({
+    if (activeMood && moodGenres.length > 0) {
+      const moodLower = moodGenres.map(g => g.toLowerCase());
+      const scored = list.map(i => ({
         ...i,
-        isHighlighted: true,
-        popchatLine: "This feels right for tonight."
+        score: ((i.movie as any).genres as any[] || [])
+          .filter(g => {
+            const name = typeof g === "string" ? g : (g?.name ?? "");
+            return name && moodLower.includes(name.toLowerCase());
+          }).length,
       }));
-      
-      const rest = list.filter(i => !top3.find(t => t.movie.id === i.movie.id));
-      list = [...top3, ...rest];
+      // Always sort by score descending (stable — zero-score movies keep relative order)
+      scored.sort((a, b) => b.score - a.score);
+      list = scored.map((i, idx) => ({
+        ...i,
+        isHighlighted: idx < 3 && i.score > 0,
+        popchatLine: idx < 3 && i.score > 0 ? "This feels right for tonight." : "",
+      }));
     }
 
     return list;
-  }, [watchlist, activeMood, removeMovie]);
+  }, [watchlist, activeMood, moodGenres, removeMovie]);
 
   if (!archetype) return null;
 
@@ -77,6 +140,9 @@ function WatchlistPage() {
           </div>
 
           <MoodBar onMoodSelect={setActiveMood} />
+          {moodLoading && (
+            <p className="text-center text-xs text-primary animate-pulse mb-4">Reading your mood...</p>
+          )}
 
           {/* UNWATCHED SECTION */}
           {unwatchedItems.length === 0 && watchedItems.length === 0 ? (
@@ -119,7 +185,7 @@ function WatchlistPage() {
               <AnimatePresence mode="wait">
                 {viewMode === "stack" ? (
                   <motion.div key="stack" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                    <WatchlistStack movies={unwatchedItems} />
+                    <WatchlistStack key={`${activeMood}-${moodGenres.join(',')}`} movies={unwatchedItems} />
                   </motion.div>
                 ) : (
                   <motion.div key="list" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
