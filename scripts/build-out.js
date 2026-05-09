@@ -1,71 +1,62 @@
 import fs from 'fs';
 import path from 'path';
 
-const distStaticClient = path.join(process.cwd(), 'dist-static', 'client');
+const distClient = path.join(process.cwd(), 'dist', 'client');
 const outDir = path.join(process.cwd(), 'out');
 
-if (!fs.existsSync(distStaticClient)) {
-  console.error('Error: dist-static/client does not exist. Did the build fail?');
+if (!fs.existsSync(distClient)) {
+  console.error('Error: dist/client does not exist. Build might have failed.');
   process.exit(1);
 }
 
+// 1. Clean and recreate out dir
 if (fs.existsSync(outDir)) {
   fs.rmSync(outDir, { recursive: true, force: true });
 }
-
 fs.mkdirSync(outDir, { recursive: true });
 
+// 2. Copy assets from dist/client
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   const entries = fs.readdirSync(src, { withFileTypes: true });
-
   for (let entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
+    if (entry.isDirectory()) copyDir(srcPath, destPath);
+    else fs.copyFileSync(srcPath, destPath);
   }
 }
+copyDir(distClient, outDir);
 
-copyDir(distStaticClient, outDir);
+// 3. Generate a fresh index.html that actually works
+const assetsDir = path.join(distClient, 'assets');
+const files = fs.readdirSync(assetsDir);
+const mainJs = files.find(f => f.startsWith('index-') && f.endsWith('.js'));
+const mainCss = files.find(f => f.startsWith('styles-') && f.endsWith('.css'));
 
-// POST-PROCESS out/index.html
-const outIndexHtml = path.join(outDir, 'index.html');
-if (fs.existsSync(outIndexHtml)) {
-  let content = fs.readFileSync(outIndexHtml, 'utf8');
-  
-  // 1. Fix relative paths (./assets -> /assets) to support sub-routes on Netlify
-  content = content.replace(/href="\.\/assets/g, 'href="/assets');
-  content = content.replace(/src="\.\/assets/g, 'src="/assets');
+const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineVault | Premium Cinematic Watchlist</title>
+  ${mainCss ? `<link rel="stylesheet" href="/assets/${mainCss}">` : ''}
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      document.body.innerHTML = '<div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace;">' +
+        '<h1>CineVault: Runtime Error</h1><p>' + msg + '</p>' +
+        '<pre style="background:#000;padding:10px;">' + (error ? error.stack : 'No stack trace') + '</pre></div>';
+    };
+  </script>
+</head>
+<body class="bg-[#1a1a1a] text-white">
+  <div id="root"></div>
+  ${mainJs ? `<script type="module" src="/assets/${mainJs}"></script>` : ''}
+  <script>console.log("CineVault SPA Started");</script>
+</body>
+</html>`;
 
-  // 2. Inject Error Catcher
-  const errorCatcher = `
-    <script>
-      window.onerror = function(msg, url, line, col, error) {
-        var root = document.getElementById('root');
-        if (root) {
-          root.innerHTML = '<div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace; position: fixed; inset: 0; z-index: 9999;">' +
-            '<h1 style="font-size: 24px;">CineVault: Runtime Error</h1>' +
-            '<p><strong>' + msg + '</strong></p>' +
-            '<p>' + url + ':' + line + '</p>' +
-            '<pre style="background: #000; padding: 15px; overflow: auto;">' + (error ? error.stack : 'No stack trace') + '</pre>' +
-            '</div>';
-        }
-        return false;
-      };
-    </script>
-  `;
-  content = content.replace('</head>', errorCatcher + '</head>');
-
-  // 3. Ensure we have a visible marker that the JS loaded
-  const marker = `<script>console.log("CineVault Assets Loaded Successfully");</script>`;
-  content = content.replace('</body>', marker + '</body>');
-
-  fs.writeFileSync(outIndexHtml, content);
-}
-
-console.log('Successfully created and patched out/ folder');
+fs.writeFileSync(path.join(outDir, 'index.html'), indexHtml);
+console.log('SUCCESS: Generated fresh SPA in out/ folder');
+console.log('Main JS:', mainJs);
+console.log('Main CSS:', mainCss);

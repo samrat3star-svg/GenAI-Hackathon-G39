@@ -1,29 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CineVault | Premium Cinematic Watchlist</title>
-    <link rel="stylesheet" href="/assets/styles-CbDQsPwj.css">
-  
-    <script>
-      window.onerror = function(msg, url, line, col, error) {
-        var root = document.getElementById('root');
-        if (root) {
-          root.innerHTML = '<div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace; position: fixed; inset: 0; z-index: 9999;">' +
-            '<h1 style="font-size: 24px;">CineVault: Runtime Error</h1>' +
-            '<p><strong>' + msg + '</strong></p>' +
-            '<p>' + url + ':' + line + '</p>' +
-            '<pre style="background: #000; padding: 15px; overflow: auto;">' + (error ? error.stack : 'No stack trace') + '</pre>' +
-            '</div>';
-        }
-        return false;
-      };
-    </script>
-  </head>
-  <body class="bg-black text-white">
-    <div id="root"></div>
-    <script type="module" src="/assets/index-CFys5XAN.js"></script>
-    <script type="module" src="/assets/index-aTuKOKVt.js"></script>
-  <script>console.log("CineVault Assets Loaded Successfully");</script></body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineVault | Premium Cinematic Watchlist</title>
+  <link rel="stylesheet" href="/assets/styles-B8gU9TqP.css">
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      document.body.innerHTML = '<div style="padding: 40px; color: #ff4d4d; background: #1a1a1a; min-height: 100vh; font-family: monospace;">' +
+        '<h1>CineVault: Runtime Error</h1><p>' + msg + '</p>' +
+        '<pre style="background:#000;padding:10px;">' + (error ? error.stack : 'No stack trace') + '</pre></div>';
+    };
+  </script>
+</head>
+<body class="bg-[#1a1a1a] text-white">
+  <div id="root"></div>
+  <script type="module" src="/assets/index-BcvPhJmg.js"></script>
+  <script>console.log("CineVault SPA Started");</script>
+</body>
 </html>
