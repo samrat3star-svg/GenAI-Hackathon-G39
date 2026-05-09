@@ -6,14 +6,16 @@ import "./styles.css";
 
 const router = getRouter();
 
+console.log("CineVault Entry Point Reached");
+
 const rootElement = document.getElementById("root");
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
-  router.load().then(() => {
-    root.render(
-      <React.StrictMode>
-        <RouterProvider router={router} />
-      </React.StrictMode>
-    );
-  });
+  root.render(
+    <React.StrictMode>
+      <RouterProvider router={router} />
+    </React.StrictMode>
+  );
+} else {
+  console.error("Root element not found!");
 }
