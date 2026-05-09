@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { VerdictBadge } from "./VerdictBadge";
 
+import { useCineVault } from "./CineVaultProvider";
+
 interface Props {
   movie: Movie;
   state?: WatchlistItem;
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatched }: Props) {
+  const { setDetailMovieId } = useCineVault();
   const [pressed, setPressed] = useState(false);
   const inList = !!state;
 
@@ -29,7 +32,8 @@ export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatche
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative flex gap-4 rounded-2xl border border-border bg-card p-3 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5"
+      onClick={() => setDetailMovieId(movie.id)}
+      className="group relative flex gap-4 rounded-2xl border border-border bg-card p-3 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
     >
       <div className="relative h-[132px] w-[88px] flex-none overflow-hidden rounded-xl bg-muted transition-transform duration-300">
         <img
@@ -76,7 +80,8 @@ export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatche
           {variant === "search" ? (
             <button
               disabled={inList}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setPressed(true);
                 setTimeout(() => setPressed(false), 600);
                 onAdd?.();
@@ -102,6 +107,7 @@ export function MovieCard({ movie, state, variant, onAdd, onRemove, onMarkWatche
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="More"
+                  onClick={(e) => e.stopPropagation()}
                   className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   <MoreHorizontal className="h-5 w-5" />

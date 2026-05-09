@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/cinevault/AppShell";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { MOVIES } from "@/lib/cinevault/movies";
-import { Film, ShieldCheck, Clock, Settings, LogOut, BarChart2 } from "lucide-react";
+import { Film, ShieldCheck, Clock, BarChart2 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
@@ -36,12 +36,6 @@ function ProfilePage() {
     const authed = localStorage.getItem("cv_authed");
     if (!authed || authed !== "true") navigate({ to: "/" });
   }, [navigate]);
-
-  const handleSignOut = () => {
-    localStorage.removeItem("cv_authed");
-    localStorage.removeItem("cv_archetype");
-    navigate({ to: "/" });
-  };
 
   // ── Derived stats ───────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -114,13 +108,6 @@ function ProfilePage() {
                 </span>
               )}
             </div>
-            <button 
-              onClick={() => navigate({ to: "/settings" })}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground hover:scale-105 transition-transform shadow-sm"
-              title="Edit Profile"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
           </div>
 
           <h1 className="relative font-display text-3xl font-bold text-foreground tracking-tight mb-1">
@@ -196,15 +183,7 @@ function ProfilePage() {
           </div>
         )}
 
-        {/* Sign Out */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 text-sm font-medium transition-all bg-secondary/50"
-          >
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
-        </div>
+
       </div>
     </AppShell>
   );

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/cinevault/AppShell";
+import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ const COLORS = [
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const { profileName: ctxName, avatarEmoji: ctxEmoji, avatarColor: ctxColor, updateProfile } = useCineVault();
   const [mounted, setMounted] = useState(false);
 
   const [name, setName] = useState("Movie Fan");
@@ -30,17 +32,14 @@ function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    setName(localStorage.getItem("cv_display_name") || "Movie Fan");
-    setEmoji(localStorage.getItem("cv_avatar_emoji") || "");
-    setColor(localStorage.getItem("cv_avatar_color") || "");
-  }, []);
+    setName(ctxName);
+    setEmoji(ctxEmoji);
+    setColor(ctxColor);
+  }, [ctxName, ctxEmoji, ctxColor]);
 
   const handleSave = () => {
-    localStorage.setItem("cv_display_name", name.trim() || "Movie Fan");
-    if (emoji) localStorage.setItem("cv_avatar_emoji", emoji);
-    else localStorage.removeItem("cv_avatar_emoji");
-    if (color) localStorage.setItem("cv_avatar_color", color);
-    else localStorage.removeItem("cv_avatar_color");
+    const finalName = name.trim() || "Movie Fan";
+    updateProfile(finalName, emoji, color);
 
     toast.success("Profile updated.");
     navigate({ to: "/profile" });

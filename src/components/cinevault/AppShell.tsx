@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Search, Library, Settings2, User, FolderHeart } from "lucide-react";
+import { Search, Library, Settings2, User, FolderHeart, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
 import { useCineVault } from "./CineVaultProvider";
 import { ARCHETYPE_IDS, ARCHETYPES } from "@/lib/cinevault/archetypes";
@@ -11,24 +11,31 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { PopChat } from "../ui/PopChat";
 import { MovieDetailPanel } from "./MovieDetailPanel";
 import { Logo } from "./Logo";
 
 const DEMO_SEED = [
-  "inception",
-  "moonlight",
-  "knives-out",
-  "arrival",
-  "john-wick",
-  "coco",
-  "the-grand-budapest",
-  "everything-everywhere",
+  "27205", // Inception
+  "376867", // Moonlight
+  "546554", // Knives Out
+  "329865", // Arrival
+  "245891", // John Wick
+  "354912", // Coco
+  "120467", // The Grand Budapest
+  "601796", // Everything Everywhere
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { setArchetype, seedDemo } = useCineVault();
+  const { setArchetype, seedDemo, profileName, avatarEmoji, avatarColor } = useCineVault();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -56,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="relative flex items-center gap-8 bg-card/80 px-8 py-3 rounded-full border border-border backdrop-blur-lg shadow-md">
           <NavLink to="/search" label="Search" active={location.pathname === "/search"} />
           <NavLink to="/watchlist" label="Vault" active={location.pathname === "/watchlist"} primary />
-          <NavLink to="/collections" label="Collections" active={location.pathname === "/collections"} />
+          {/* <NavLink to="/collections" label="Collections" active={location.pathname === "/collections"} /> */}
         </div>
 
         <div className="relative flex items-center gap-4">
@@ -103,13 +110,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
 
-          <Link 
-            to="/profile" 
-            title="Your Profile"
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border border-border shadow-lg hover:scale-105 transition-transform"
-          >
-            <User className="w-5 h-5 text-primary-foreground" />
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-11 h-11 rounded-full flex items-center justify-center border border-border shadow-lg hover:scale-105 transition-transform outline-none overflow-hidden"
+                style={{ backgroundColor: avatarColor || 'var(--primary)', background: !avatarColor ? 'linear-gradient(to bottom right, var(--primary), var(--accent))' : undefined }}
+                title="Your Account"
+              >
+                {avatarEmoji ? (
+                  <span className="text-xl">{avatarEmoji}</span>
+                ) : (
+                  <span className="font-display text-lg font-bold text-primary-foreground">
+                    {profileName ? profileName.charAt(0).toUpperCase() : "M"}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="flex items-center w-full">
+                  <User className="w-4 h-4 mr-2" /> View Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center w-full">
+                  <Settings className="w-4 h-4 mr-2" /> Edit Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                <LogOut className="w-4 h-4 mr-2" /> Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </nav>
 
@@ -157,13 +190,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
-        <Link 
-          to="/profile" 
-          title="Your Profile"
-          className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center border border-border shadow-xl active:scale-95 transition-transform backdrop-blur-md"
-        >
-          <User className="w-5 h-5 text-primary-foreground" />
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="w-11 h-11 rounded-full flex items-center justify-center border border-border shadow-xl active:scale-95 transition-transform backdrop-blur-md outline-none overflow-hidden"
+              style={{ backgroundColor: avatarColor || 'var(--primary)', background: !avatarColor ? 'linear-gradient(to bottom right, var(--primary), var(--accent))' : undefined }}
+              title="Your Account"
+            >
+              {avatarEmoji ? (
+                <span className="text-xl">{avatarEmoji}</span>
+              ) : (
+                <span className="font-display text-lg font-bold text-primary-foreground">
+                  {profileName ? profileName.charAt(0).toUpperCase() : "M"}
+                </span>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link to="/profile" className="flex items-center w-full">
+                <User className="w-4 h-4 mr-2" /> View Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/settings" className="flex items-center w-full">
+                <Settings className="w-4 h-4 mr-2" /> Edit Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Main Content */}
@@ -178,7 +237,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-stretch justify-center gap-6 px-4 py-1">
           <MobileTab to="/search" label="Search" Icon={Search} active={location.pathname === "/search"} />
           <MobileTab to="/watchlist" label="Vault" Icon={Library} active={location.pathname === "/watchlist"} primary />
-          <MobileTab to="/collections" label="Collections" Icon={FolderHeart} active={location.pathname === "/collections"} />
+          {/* <MobileTab to="/collections" label="Collections" Icon={FolderHeart} active={location.pathname === "/collections"} /> */}
         </div>
       </nav>
     </div>

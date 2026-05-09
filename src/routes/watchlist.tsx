@@ -17,7 +17,7 @@ export const Route = createFileRoute("/watchlist")({
 });
 
 function WatchlistPage() {
-  const { archetype, watchlist, removeMovie, markWatched } = useCineVault();
+  const { archetype, watchlist, removeMovie, markWatched, setDetailMovieId } = useCineVault();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"stack" | "list" | "carousel">("carousel");
   const [verdictTarget, setVerdictTarget] = useState<string | null>(null);
@@ -40,16 +40,17 @@ function WatchlistPage() {
     if (missingIds.length === 0) return;
 
     const fetchAll = async () => {
-      const newMovies: Record<string, Movie> = { ...fetchedMovies };
+      const results: Record<string, Movie> = {};
       for (const id of missingIds) {
         const m = await getTMDBDetails(id);
-        if (m) newMovies[id] = m;
+        if (m) results[id] = m;
       }
-      setFetchedMovies(newMovies);
+      // Merge with current state to avoid stale closure overwriting existing entries
+      setFetchedMovies(prev => ({ ...prev, ...results }));
     };
 
     fetchAll();
-  }, [watchlist, fetchedMovies]);
+  }, [watchlist]); // Only re-run when watchlist changes, not fetchedMovies
 
   const items = useMemo(() => {
     let list = watchlist
@@ -80,7 +81,8 @@ function WatchlistPage() {
     }
 
     return list;
-  }, [watchlist, activeMood, removeMovie]);
+  // fetchedMovies MUST be in deps so vault re-renders when async movie data arrives
+  }, [watchlist, fetchedMovies, activeMood, removeMovie]);
 
   if (!archetype) return null;
 
@@ -98,23 +100,20 @@ function WatchlistPage() {
             <span className="text-primary">{watchedItems.length} WATCHED</span>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
-            <div className="flex-1 w-full">
-              <MoodBar onMoodSelect={setActiveMood} />
-            </div>
-            {unwatchedItems.length > 0 && (
-              <button
-                onClick={() => setIsDecisionMode(true)}
-                className="flex items-center gap-2 px-6 py-4 rounded-3xl bg-primary text-primary-foreground font-bold shadow-[0_0_25px_rgba(var(--primary),0.4)] hover:scale-105 transition-transform group"
-              >
-                <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                Decide for Me
-              </button>
-            )}
-          </div>
+          <MoodBar 
+            onMoodSelect={setActiveMood} 
+            showDecide={unwatchedItems.length > 0}
+            onDecide={() => setIsDecisionMode(true)}
+          />
 
           {/* UNWATCHED SECTION */}
-          {unwatchedItems.length === 0 && watchedItems.length === 0 ? (
+          {/* Show a loading indicator if watchlist has items but none are resolved yet */}
+          {watchlist.length > 0 && items.length === 0 && (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {unwatchedItems.length === 0 && watchedItems.length === 0 && watchlist.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <Film className="w-16 h-16 text-muted-foreground mb-6" />
               <p className="font-display text-2xl text-foreground/80 mb-2">Your vault is empty.</p>
@@ -255,7 +254,7 @@ function WatchlistPage() {
               onClose={() => setIsDecisionMode(false)}
               onPick={(movie) => {
                 setIsDecisionMode(false);
-                setDetailMovieId(movie.id);
+                if (setDetailMovieId) setDetailMovieId(movie.id);
               }}
             />
           )}

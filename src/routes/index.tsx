@@ -5,14 +5,14 @@ import { Logo } from "@/components/cinevault/Logo";
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    if (typeof window === "undefined") return;
-    const authed = localStorage.getItem("cv_authed");
-    const archetype = localStorage.getItem("cv_archetype");
+    // if (typeof window === "undefined") return;
+    // const authed = localStorage.getItem("cv_authed");
+    // const archetype = localStorage.getItem("cv_archetype");
     
     // If already logged in, skip the auth/landing page
-    if (authed === "true") {
-      throw redirect({ to: archetype ? "/watchlist" : "/onboarding" });
-    }
+    // if (authed === "true") {
+    //   throw redirect({ to: archetype ? "/watchlist" : "/onboarding" });
+    // }
   },
   component: LandingAuthPage,
 });
@@ -22,7 +22,7 @@ function LandingAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
 
   const col1 = [...MOVIES, ...MOVIES].slice(0, 12);
   const col2 = [...MOVIES.slice(5), ...MOVIES].slice(0, 12);
@@ -46,17 +46,13 @@ function LandingAuthPage() {
   };
 
   const handleLogIn = () => {
-    const authed = localStorage.getItem("cv_authed");
-    // For this mock app, we'll allow login if they've signed up before (cv_authed exists)
-    // or just allow it for demo purposes if they enter anything.
-    // But let's stick to the logic:
-    if (authed === "true") {
-      navigate({ to: getDestination() });
-    } else {
-      // For a better first-time experience, let's just let them "log in" if they have data
-      // but if the site is totally fresh, force sign up.
-      setError("No account found. Please sign up first.");
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
     }
+    // Mock auth — set session and navigate
+    localStorage.setItem("cv_authed", "true");
+    navigate({ to: getDestination() });
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Popcorn } from "lucide-react";
+import { Popcorn, Sparkles } from "lucide-react";
 
 export const MOOD_CHIPS = [
   "Comfort", "Escape", "Funny", "Easy", "Quiet", "Intense", "Emotional", "Beautiful", "Smart", "Chaotic"
@@ -8,9 +8,11 @@ export const MOOD_CHIPS = [
 
 interface MoodBarProps {
   onMoodSelect: (mood: string) => void;
+  onDecide?: () => void;
+  showDecide?: boolean;
 }
 
-export function MoodBar({ onMoodSelect }: MoodBarProps) {
+export function MoodBar({ onMoodSelect, onDecide, showDecide }: MoodBarProps) {
   const [query, setQuery] = useState("");
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
@@ -49,24 +51,38 @@ export function MoodBar({ onMoodSelect }: MoodBarProps) {
           </motion.p>
         </AnimatePresence>
 
-        {/* Input Field */}
-        <div className="relative w-full max-w-md">
-          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 focus-within:opacity-100 transition-opacity duration-500" />
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (query.trim()) handlePick(query.trim());
-            }}
-            className="relative flex items-center bg-card backdrop-blur-md border border-border rounded-full px-5 py-3.5 focus-within:border-primary/50 transition-colors shadow-md"
-          >
-            <Popcorn className="w-5 h-5 text-primary/80 mr-3 flex-shrink-0" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Describe your mood..."
-              className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground font-medium"
-            />
-          </form>
+        {/* Input Field & Decide Button */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl">
+          <div className="relative flex-1 w-full">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 focus-within:opacity-100 transition-opacity duration-500" />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (query.trim()) handlePick(query.trim());
+              }}
+              className="relative flex items-center bg-card backdrop-blur-md border border-border rounded-full px-5 py-3.5 focus-within:border-primary/50 transition-colors shadow-md"
+            >
+              <Popcorn className="w-5 h-5 text-primary/80 mr-3 flex-shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Describe your mood..."
+                className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground font-medium"
+              />
+            </form>
+          </div>
+
+          {showDecide && onDecide && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onDecide}
+              className="flex items-center gap-2 px-6 py-4 rounded-full bg-primary text-primary-foreground font-bold shadow-[0_0_25px_rgba(var(--primary),0.4)] whitespace-nowrap group"
+            >
+              <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+              Decide for Me
+            </motion.button>
+          )}
         </div>
 
         {/* Scrollable Chips */}

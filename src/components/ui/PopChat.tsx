@@ -181,16 +181,27 @@ export function PopChat() {
               userSelect: "none",
               touchAction: "none"
             }}
-            className="group relative flex items-center gap-2 bg-primary text-primary-foreground rounded-full shadow-xl hover:scale-105 transition-transform flex-row px-4 py-2.5"
+            className="group relative"
           >
-            <span className="text-base leading-none">🍿</span>
-            <span className="text-sm font-display font-bold tracking-wide leading-none">
-              Kernel
+            {/* Tooltip */}
+            <span className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-card border border-border text-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              your AI Buddy ✨
             </span>
-            {/* Pulsing status dot */}
-            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-background rounded-full flex items-center justify-center pointer-events-none">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+
+            {/* Pulsing green online dot */}
+            <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-background rounded-full flex items-center justify-center pointer-events-none z-10 shadow">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
             </span>
+
+            {/* Kernel Avatar — transparent BG, fluffy natural shape */}
+            <div className="w-20 h-20 group-hover:scale-110 transition-all duration-200 drop-shadow-2xl">
+              <img
+                src="/kernel-avatar.png"
+                alt="Kernel - your AI Buddy"
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            </div>
           </motion.button>
         )}
 

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useCineVault, type WatchlistItem } from "./CineVaultProvider";
 import { type Movie } from "@/lib/cinevault/movies";
-import { Check, Trash2, Clock, Info, MoreHorizontal, FolderPlus, Star } from "lucide-react";
+import { Check, Trash2, Clock, Info, MoreHorizontal, Star, X } from "lucide-react";
 import { VerdictBadge } from "./VerdictBadge";
 import {
   DropdownMenu,
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -44,7 +43,8 @@ export function WatchlistStack({ movies }: WatchlistProps) {
             }}
             exit={{ opacity: 0, scale: 0.8, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 group"
+            onClick={() => setDetailMovieId(item.movie.id)}
+            className="absolute inset-0 group cursor-pointer"
           >
             <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl border border-border bg-card">
               <img 
@@ -74,18 +74,25 @@ export function WatchlistStack({ movies }: WatchlistProps) {
                   <span>{item.movie.runtime}m</span>
                 </div>
                 
-                <div className="flex gap-3">
+                <div className="flex gap-3 relative z-30">
                   <button 
-                    onClick={item.onMarkWatched}
+                    onClick={(e) => { e.stopPropagation(); item.onMarkWatched(); }}
                     className="flex-1 bg-white text-black py-3 rounded-xl font-bold hover:bg-primary hover:text-white transition-colors"
                   >
                     {item.state.watched ? "Change Verdict" : "Mark Watched"}
                   </button>
                   <button 
-                    onClick={() => setDetailMovieId(item.movie.id)}
+                    onClick={(e) => { e.stopPropagation(); setDetailMovieId(item.movie.id); }}
                     className="w-12 h-12 bg-white/10 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <Info className="w-6 h-6" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); item.onRemove(); }}
+                    className="w-12 h-12 bg-red-500/20 backdrop-blur-md text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500/40 transition-colors"
+                    title="Remove from Vault"
+                  >
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -109,7 +116,8 @@ export function WatchlistCarousel({ movies }: WatchlistProps) {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="w-72 snap-center"
+            onClick={() => setDetailMovieId(item.movie.id)}
+            className="w-72 snap-center cursor-pointer"
           >
             <div className="group relative aspect-[2/3] rounded-3xl overflow-hidden shadow-xl border border-border bg-card">
               <img 
@@ -134,18 +142,25 @@ export function WatchlistCarousel({ movies }: WatchlistProps) {
                   )}
                 </div>
                 
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 relative z-30">
                   <button 
-                    onClick={item.onMarkWatched}
+                    onClick={(e) => { e.stopPropagation(); item.onMarkWatched(); }}
                     className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-xs font-bold hover:shadow-[0_0_15px_rgba(var(--primary),0.4)] transition-all"
                   >
                     {item.state.watched ? "Verdict" : "Watched"}
                   </button>
                   <button 
-                    onClick={() => setDetailMovieId(item.movie.id)}
+                    onClick={(e) => { e.stopPropagation(); setDetailMovieId(item.movie.id); }}
                     className="px-3 bg-white/10 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <Info className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); item.onRemove(); }}
+                    className="px-3 bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500/40 transition-colors"
+                    title="Remove from Vault"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -170,7 +185,8 @@ export function WatchlistList({ movies }: WatchlistProps) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: -20 }}
           transition={{ duration: 0.3 }}
-          className="group flex items-center gap-4 bg-card p-3 rounded-2xl border border-border hover:border-primary/40 hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all duration-200"
+          onClick={() => setDetailMovieId(item.movie.id)}
+          className="group flex items-center gap-4 bg-card p-3 rounded-2xl border border-border hover:border-primary/40 hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
         >
           <div 
             className="w-16 h-24 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer transition-transform duration-300 group-hover:scale-105"
@@ -209,7 +225,7 @@ export function WatchlistList({ movies }: WatchlistProps) {
           <div className="flex gap-2">
             {!item.state.watched && (
               <button
-                onClick={item.onMarkWatched}
+                onClick={(e) => { e.stopPropagation(); item.onMarkWatched(); }}
                 className="p-2.5 rounded-xl bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors hidden sm:block"
                 title="Mark as watched"
               >
@@ -220,6 +236,7 @@ export function WatchlistList({ movies }: WatchlistProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
+                  onClick={(e) => e.stopPropagation()}
                   className="p-2.5 rounded-xl bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
                   title="More actions"
                 >
@@ -233,25 +250,6 @@ export function WatchlistList({ movies }: WatchlistProps) {
                   </DropdownMenuItem>
                 )}
                 
-                {/* Add to Collection -> Popover inside DropdownMenu causes issues, so we use a sub-menu or inline dialog.
-                    Actually, we can render the collections directly as a sub-menu if we import DropdownMenuSub.
-                    Since we don't have it imported here, we can just use a Popover from a standalone button or a regular DropdownMenu item that opens a dialog.
-                    Wait, let's just use Popover on a regular button next to it? 
-                    The prompt says: "in the ··· action sheet... add a third option". 
-                    Since Radix UI supports SubMenus, let's use a standalone popover trigger or just render the collections inline if few?
-                    Let's use a Popover that wraps the DropdownMenuItem. 
-                */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <FolderPlus className="w-4 h-4 mr-2" /> Add to Collection →
-                    </DropdownMenuItem>
-                  </PopoverTrigger>
-                  <PopoverContent side="left" align="start" className="w-56 p-2 bg-card border-border shadow-xl">
-                    <CollectionsList movieId={item.movie.id} />
-                  </PopoverContent>
-                </Popover>
-
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={item.onRemove} className="text-destructive focus:text-destructive">
                   <Trash2 className="w-4 h-4 mr-2" /> Remove from Watchlist

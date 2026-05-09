@@ -57,11 +57,11 @@ function TrendingCard({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay }}
-      className="group relative flex gap-4 p-4 rounded-3xl bg-gradient-to-br from-card to-secondary/30 border border-border/50 hover:border-primary/30 transition-all duration-300"
+      onClick={onDetail}
+      className="group relative flex gap-4 p-4 rounded-3xl bg-gradient-to-br from-card to-secondary/30 border border-border/50 hover:border-primary/30 transition-all duration-300 cursor-pointer"
     >
       <div 
-        className="w-24 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl cursor-pointer"
-        onClick={onDetail}
+        className="w-24 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl"
       >
         <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
       </div>
@@ -70,7 +70,7 @@ function TrendingCard({
           <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">Trending</span>
           <span className="text-xs text-muted-foreground">{movie.year}</span>
         </div>
-        <h3 className="font-display text-lg font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors cursor-pointer" onClick={onDetail}>
+        <h3 className="font-display text-lg font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
           {movie.title}
         </h3>
         <div className="flex items-center gap-2 mt-1 mb-4">
@@ -87,7 +87,10 @@ function TrendingCard({
           <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">In Your Vault</span>
         ) : (
           <button
-            onClick={onAdd}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd();
+            }}
             className="flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:shadow-[0_0_15px_rgba(var(--primary),0.4)] transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" /> Quick Add
@@ -314,11 +317,7 @@ function SearchPage() {
               })}
             </div>
 
-            <div className="mt-12 text-center border-t border-border pt-12">
-              <p className="text-muted-foreground font-display text-lg">
-                Or search any movie title, director, or actor.
-              </p>
-            </div>
+
           </div>
         )}
 
@@ -365,11 +364,11 @@ function SearchPage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ delay: i * 0.04 }}
-                      className="group relative flex gap-4 p-3 rounded-2xl bg-card border border-border hover:border-primary/30 hover:bg-secondary hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                      onClick={() => setDetailMovieId(movie.id)}
+                      className="group relative flex gap-4 p-3 rounded-2xl bg-card border border-border hover:border-primary/30 hover:bg-secondary hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 cursor-pointer"
                     >
                       <div
-                        className="w-24 aspect-[2/3] rounded-xl overflow-hidden relative shadow-lg cursor-pointer flex-shrink-0"
-                        onClick={() => setDetailMovieId(movie.id)}
+                        className="w-24 aspect-[2/3] rounded-xl overflow-hidden relative shadow-lg flex-shrink-0"
                       >
                         <img
                           src={movie.poster}
@@ -380,8 +379,7 @@ function SearchPage() {
 
                       <div className="flex-1 flex flex-col justify-center py-1 min-w-0">
                         <h3
-                          className="font-display text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
-                          onClick={() => setDetailMovieId(movie.id)}
+                          className="font-display text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1"
                         >
                           {movie.title}
                         </h3>
@@ -408,7 +406,8 @@ function SearchPage() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               addMovie(movie.id);
                               reelToast(reel.add(archetype, movie));
                             }}

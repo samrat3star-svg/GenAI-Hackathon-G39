@@ -39,6 +39,10 @@ interface CineVaultContextValue {
   addMovieToCollection: (collectionId: string, movieId: string) => void;
   removeMovieFromCollection: (collectionId: string, movieId: string) => void;
   addCollaborator: (collectionId: string, name: string) => void;
+  profileName: string;
+  avatarEmoji: string;
+  avatarColor: string;
+  updateProfile: (name: string, emoji: string, color: string) => void;
 }
 
 const Ctx = createContext<CineVaultContextValue | null>(null);
@@ -47,6 +51,9 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
   const [archetype, setArchetypeState] = useState<ArchetypeId | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [profileName, setProfileName] = useState("Movie Fan");
+  const [avatarEmoji, setAvatarEmoji] = useState("");
+  const [avatarColor, setAvatarColor] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -54,6 +61,11 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     setArchetypeState(s.archetype);
     setWatchlist(s.watchlist);
     setCollections(s.collections || []);
+    
+    setProfileName(localStorage.getItem("cv_display_name") || "Movie Fan");
+    setAvatarEmoji(localStorage.getItem("cv_avatar_emoji") || "");
+    setAvatarColor(localStorage.getItem("cv_avatar_color") || "");
+    
     setHydrated(true);
   }, []);
 
@@ -166,6 +178,15 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const updateProfile = useCallback((name: string, emoji: string, color: string) => {
+    setProfileName(name);
+    setAvatarEmoji(emoji);
+    setAvatarColor(color);
+    localStorage.setItem("cv_display_name", name);
+    localStorage.setItem("cv_avatar_emoji", emoji);
+    localStorage.setItem("cv_avatar_color", color);
+  }, []);
+
   const [detailMovieId, setDetailMovieId] = useState<string | null>(null);
 
   const value = useMemo<CineVaultContextValue>(
@@ -188,8 +209,12 @@ export function CineVaultProvider({ children }: { children: React.ReactNode }) {
       addMovieToCollection,
       removeMovieFromCollection,
       addCollaborator,
+      profileName,
+      avatarEmoji,
+      avatarColor,
+      updateProfile,
     }),
-    [archetype, watchlist, detailMovieId, collections, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo, createCollection, deleteCollection, addMovieToCollection, removeMovieFromCollection, addCollaborator],
+    [archetype, watchlist, detailMovieId, collections, setArchetype, addMovie, removeMovie, markWatched, hasMovie, reset, seedDemo, createCollection, deleteCollection, addMovieToCollection, removeMovieFromCollection, addCollaborator, profileName, avatarEmoji, avatarColor, updateProfile],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

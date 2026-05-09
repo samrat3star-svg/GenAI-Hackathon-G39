@@ -1,17 +1,21 @@
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { MOVIES } from "@/lib/cinevault/movies";
-import { Play, Plus, Clock, Calendar, Check, MessageCircle, Star } from "lucide-react";
+import { Plus, Clock, Calendar, Check, MessageCircle, Star, X, Share2 } from "lucide-react";
 import { reelToast } from "@/components/cinevault/reelToast";
 import { reel } from "@/lib/cinevault/reel";
 import { useState, useEffect } from "react";
 import { getTMDBDetails } from "@/lib/tmdb";
 import { Movie } from "@/lib/cinevault/movies";
+import { askKernel } from "@/lib/openai";
+import { Sparkles } from "lucide-react";
 
 export function MovieDetailPanel() {
   const { archetype, detailMovieId, setDetailMovieId, hasMovie, addMovie } = useCineVault();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   useEffect(() => {
     if (!detailMovieId) {
@@ -22,76 +26,103 @@ export function MovieDetailPanel() {
     const localMovie = MOVIES.find((m) => m.id === detailMovieId);
     if (localMovie) {
       setMovie(localMovie);
-      return;
+      // Don't return! We still want to fetch deep details (cast/crew) from TMDB
     }
 
-    // If not local, fetch from TMDB
+    // Always fetch deep details from TMDB to get cast, crew, and full description
     const fetchTMDB = async () => {
-      setIsLoading(true);
+      if (!localMovie) setIsLoading(true);
+      setAiSummary(null);
       const m = await getTMDBDetails(detailMovieId);
-      setMovie(m);
+      if (m) setMovie(m);
       setIsLoading(false);
+      
+      if (m) {
+        setIsAiLoading(true);
+        const prompt = `Give me a punchy 3-line summary of why the movie "${m.title}" is a must-watch for someone who is a "${archetype}" movie lover. Use a cinematic, slightly mysterious tone.`;
+        const res = await askKernel(prompt);
+        // Only show if it's not the fallback error message
+        if (res && !res.includes("jammed") && !res.includes("popcorn machine")) {
+          setAiSummary(res);
+        } else {
+          setAiSummary(null);
+        }
+        setIsAiLoading(false);
+      }
     };
 
     fetchTMDB();
-  }, [detailMovieId]);
+  }, [detailMovieId, archetype]);
 
   if (!archetype) return null;
   if (!detailMovieId) return null;
 
-  const inWatchlist = hasMovie(movie.id);
+  const inWatchlist = movie ? hasMovie(movie.id) : false;
 
   return (
     <Sheet open={!!detailMovieId} onOpenChange={(open) => !open && setDetailMovieId(null)}>
-      <SheetContent side="right" className="w-full md:min-w-[500px] lg:min-w-[600px] p-0 bg-black border-l border-white/10 overflow-y-auto">
+      <SheetContent side="right" className="w-full md:min-w-[500px] lg:min-w-[600px] p-0 bg-black border-l border-white/10 overflow-y-auto z-[100]">
         <SheetTitle className="sr-only">{movie?.title || "Movie"} Details</SheetTitle>
         
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        {!movie && isLoading ? (
+          <div className="p-10 space-y-8 animate-in fade-in duration-500">
+            <div className="aspect-[16/9] w-full bg-white/5 rounded-3xl animate-pulse" />
+            <div className="flex gap-6 items-end">
+              <div className="w-28 md:w-36 aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
+              <div className="flex-1 space-y-4">
+                <div className="h-8 bg-white/10 rounded-lg w-3/4 animate-pulse" />
+                <div className="h-4 bg-white/5 rounded-md w-1/2 animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-4 pt-10">
+              <div className="h-4 bg-white/5 rounded w-full animate-pulse" />
+              <div className="h-4 bg-white/5 rounded w-full animate-pulse" />
+              <div className="h-4 bg-white/5 rounded w-2/3 animate-pulse" />
+            </div>
           </div>
-        ) : !movie ? (
-          <div className="flex h-full items-center justify-center text-white/50">
-            Movie not found.
-          </div>
-        ) : (
+        ) : movie && (
           <>
         {/* Cinematic Backdrop */}
         <div className="relative w-full aspect-[16/9]">
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10" />
-          <img src={movie.poster} alt="" className="w-full h-full object-cover" />
-          <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40 hover:scale-110 transition-transform">
-            <Play className="w-6 h-6 text-white ml-1" />
+          <img 
+            src={movie.poster} 
+            alt="" 
+            className="w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+          <button 
+            onClick={() => setDetailMovieId(null)}
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"
+          >
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Detail Content */}
-        <div className="px-6 md:px-10 pb-20 relative z-20 -mt-16">
-          <div className="flex gap-6 items-end mb-6">
-            <img src={movie.poster} alt={movie.title} className="w-28 md:w-36 rounded-xl shadow-2xl border border-white/10" />
+        <div className="relative px-8 md:px-10 -mt-20 pb-20">
+          <div className="flex gap-6 md:gap-8 items-end mb-8">
+            <div className="w-32 md:w-44 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0 bg-muted">
+              <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover" />
+            </div>
             <div className="flex-1 pb-2">
-              <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">{movie.title}</h1>
-              <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-white/60 font-medium">
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {movie.year}</span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                {movie.rating ? (
-                  <>
-                    <span className="flex items-center gap-1 text-amber-400 font-bold">
-                      <Star className="w-3.5 h-3.5 fill-current" /> {movie.rating.toFixed(1)}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                  </>
-                ) : null}
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {movie.runtime}m</span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span>{movie.genres.join(", ")}</span>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {movie.moodTags?.map(tag => (
-                  <span key={tag} className="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/30">
-                    {tag}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {movie.genres?.map(g => (
+                  <span key={g} className="px-2.5 py-1 rounded-full bg-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider">
+                    {g}
                   </span>
                 ))}
+              </div>
+              <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-2 leading-tight">
+                {movie.title}
+              </h2>
+              <div className="flex items-center gap-4 text-white/60 text-sm font-medium">
+                <span>{movie.year}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                {movie.rating ? (
+                  <div className="flex items-center gap-1 text-amber-400">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="font-bold">{movie.rating.toFixed(1)}</span>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -117,7 +148,30 @@ export function MovieDetailPanel() {
             </button>
           </div>
 
-          <p className="text-white/80 text-sm md:text-base leading-relaxed mb-10">
+          {/* AI Insight */}
+          {(isAiLoading || aiSummary) && (
+            <div className="mb-10 p-5 rounded-2xl bg-primary/10 border border-primary/20 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> Kernel's Insight
+              </h3>
+              {isAiLoading ? (
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-4 bg-primary/20 rounded w-3/4" />
+                  <div className="h-4 bg-primary/20 rounded w-1/2" />
+                  <div className="h-4 bg-primary/20 rounded w-2/3" />
+                </div>
+              ) : (
+                <p className="text-sm md:text-base text-white font-medium italic leading-relaxed">
+                  "{aiSummary}"
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="text-white/60 text-sm md:text-base leading-relaxed mb-10 border-l-2 border-white/10 pl-4">
             {movie.description || movie.blurb || "No description available for this cinematic journey."}
           </p>
 

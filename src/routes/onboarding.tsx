@@ -5,6 +5,7 @@ import { DNA_QUESTIONS, scoreDna } from "@/lib/cinevault/dna";
 import { ARCHETYPES, type ArchetypeId } from "@/lib/cinevault/archetypes";
 import { useCineVault } from "@/components/cinevault/CineVaultProvider";
 import { Logo } from "@/components/cinevault/Logo";
+import { ArrowLeft } from "lucide-react";
 
 const IMAGE_MAP: Record<string, string> = {
   "Sparkles": "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=800&auto=format&fit=crop", // Alive
@@ -59,6 +60,14 @@ function Onboarding() {
     }
   };
 
+  const goBack = () => {
+    if (answers.length > 0) {
+      setAnswers(prev => prev.slice(0, -1));
+    } else {
+      setPhase("intro");
+    }
+  };
+
   return (
     <div className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 grain opacity-40" />
@@ -103,15 +112,23 @@ function Onboarding() {
         {phase === "questions" && (
           <motion.section
             key={`q-${qIndex}`}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -24 }}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.35 }}
             className="mx-auto flex min-h-dvh max-w-2xl flex-col justify-center px-6"
           >
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Question {qIndex + 1} of {DNA_QUESTIONS.length}
-            </p>
+            <div className="flex items-center gap-4 mb-4">
+              <button 
+                onClick={goBack}
+                className="p-2 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Question {qIndex + 1} of {DNA_QUESTIONS.length}
+              </p>
+            </div>
             <h2 className="mt-3 font-display text-3xl sm:text-5xl leading-tight tracking-tight text-balance">
               {DNA_QUESTIONS[qIndex].prompt}
             </h2>
