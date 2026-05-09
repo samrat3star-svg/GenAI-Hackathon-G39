@@ -23,7 +23,12 @@ function LandingAuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(true);
 
-  const posters = MOVIES.slice(0, 18);
+  const col1 = [...MOVIES, ...MOVIES].slice(0, 12);
+  const col2 = [...MOVIES.slice(5), ...MOVIES].slice(0, 12);
+  const col3 = [...MOVIES.slice(10), ...MOVIES].slice(0, 12);
+  const col4 = [...MOVIES.slice(15), ...MOVIES].slice(0, 12);
+  const col5 = [...MOVIES.slice(20), ...MOVIES].slice(0, 12);
+  const col6 = [...MOVIES.slice(3), ...MOVIES].slice(0, 12);
 
   const getDestination = () => {
     const archetype = localStorage.getItem("cv_archetype");
@@ -60,47 +65,43 @@ function LandingAuthPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center bg-background text-foreground relative overflow-hidden">
-      {/* Animated Film Grain */}
-      <div className="grain-overlay" />
+    <div className="min-h-dvh flex flex-col items-center justify-center text-foreground relative overflow-hidden" style={{ backgroundColor: "#0a0a0a" }}>
 
-      {/* BACKGROUND LAYER: Cinematic Poster Grid */}
-      <div className="absolute inset-0 overflow-hidden flex gap-3 p-4 rotate-[-8deg] scale-[1.3] origin-center pointer-events-none select-none">
-        {/* Column 1 */}
-        <div className="flex flex-col gap-3">
-          {posters.slice(0, 6).map((m, i) => (
-            <img key={m.id + i} src={m.poster} className="w-32 aspect-[2/3] rounded-xl object-cover opacity-30 grayscale-[20%]" alt="" />
-          ))}
-        </div>
-        {/* Column 2 - Offset */}
-        <div className="flex flex-col gap-3 -translate-y-10">
-          {posters.slice(6, 12).map((m, i) => (
-            <img key={m.id + i} src={m.poster} className="w-32 aspect-[2/3] rounded-xl object-cover opacity-30 grayscale-[20%]" alt="" />
-          ))}
-        </div>
-        {/* Column 3 - More Offset */}
-        <div className="flex flex-col gap-3 -translate-y-20">
-          {posters.slice(12, 18).map((m, i) => (
-            <img key={m.id + i} src={m.poster} className="w-32 aspect-[2/3] rounded-xl object-cover opacity-30 grayscale-[20%]" alt="" />
-          ))}
-        </div>
-        <div className="hidden lg:flex flex-col gap-3 translate-y-5">
-          {posters.slice(0, 6).map((m, i) => (
-            <img key={m.id + i + 'extra'} src={m.poster} className="w-32 aspect-[2/3] rounded-xl object-cover opacity-30 grayscale-[20%]" alt="" />
-          ))}
-        </div>
+      {/* Full-screen scrolling poster mosaic */}
+      <div className="absolute inset-0 flex gap-2 p-2 pointer-events-none select-none">
+        {[col1, col2, col3, col4, col5, col6].map((col, ci) => (
+          <div
+            key={ci}
+            className="flex-1 flex flex-col gap-2"
+            style={{
+              animation: `scrollColumn ${20 + ci * 3}s linear infinite ${ci % 2 === 0 ? "normal" : "reverse"}`,
+            }}
+          >
+            {[...col, ...col].map((m, i) => (
+              <img
+                key={m.id + ci + i}
+                src={m.poster}
+                className="w-full aspect-[2/3] rounded-lg object-cover flex-shrink-0"
+                style={{ opacity: 0.6 }}
+                alt=""
+              />
+            ))}
+          </div>
+        ))}
       </div>
 
-      {/* OVERLAY LAYER: Gradients */}
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-background via-transparent/30 to-background" />
-      <div className="absolute inset-0 z-10 pointer-events-none [background:radial-gradient(ellipse_at_center,transparent_0%,var(--background)_75%)]" />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 z-10" style={{ backgroundColor: "rgba(0,0,0,0.55)" }} />
+      {/* Vignette */}
+      <div className="absolute inset-0 z-10 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.75) 100%)" }} />
 
       {/* CONTENT LAYER: Auth Form */}
       <div className="relative z-30 w-full max-w-sm px-4">
-        <div className="bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-8 shadow-2xl">
+        <div className="backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl" style={{ backgroundColor: "rgba(15,15,15,0.75)" }}>
           <div className="text-center mb-8">
-            <h1 className="font-display text-4xl font-bold text-foreground tracking-tight">CineVault</h1>
-            <p className="text-sm text-muted-foreground italic mt-2">
+            <h1 className="font-display text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>CineVault</h1>
+            <p className="text-sm italic mt-2" style={{ color: "rgba(255,255,255,0.55)" }}>
               The watchlist that finally has opinions.
             </p>
           </div>
@@ -112,7 +113,8 @@ function LandingAuthPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(null); }}
                 placeholder="you@cinema.com"
-                className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 outline-none transition-colors"
+                style={{ backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
                 required
               />
               <input
@@ -120,7 +122,8 @@ function LandingAuthPage() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(null); }}
                 placeholder="••••••••"
-                className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 outline-none transition-colors"
+                style={{ backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
                 required
               />
             </div>
