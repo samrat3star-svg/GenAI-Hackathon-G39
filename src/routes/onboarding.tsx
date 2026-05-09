@@ -8,7 +8,7 @@ import { Logo } from "@/components/cinevault/Logo";
 import { ArrowLeft } from "lucide-react";
 
 const IMAGE_MAP: Record<string, string> = {
-  "Sparkles": "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?q=80&w=800&auto=format&fit=crop", // Alive
+  "Sparkles": "/onboarding/alive.png", // Alive
   "AlertCircle": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop", // Cheated
   "Moon": "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=800&auto=format&fit=crop", // Alone
   "Users": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop", // Together
