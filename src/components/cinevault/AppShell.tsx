@@ -1,3 +1,4 @@
+import React from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Search, Library, Settings2, User, FolderHeart } from "lucide-react";
 import { useState } from "react";

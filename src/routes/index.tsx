@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { MOVIES } from "@/lib/cinevault/movies";
 
 export const Route = createFileRoute("/")({
